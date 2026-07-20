@@ -1,17 +1,16 @@
 import { NextResponse } from "next/server";
-import { isAdminTokenValid } from "@/lib/admin";
+import { requireApiAdmin } from "@/lib/admin-auth";
 import { formatCode, generateTokens } from "@/lib/tokens";
 
 export const runtime = "nodejs";
 
 const MAX_BATCH = 200;
 
-/** 관리자 전용 — 이용 토큰 일괄 생성. */
+/** 관리자 전용 — 이용 토큰 일괄 생성. 세션 쿠키 또는 Bearer ADMIN_TOKEN. */
 export async function POST(request: Request) {
-  const auth = request.headers.get("authorization")?.replace(/^Bearer\s+/i, "");
-  const check = isAdminTokenValid(auth);
-  if (check !== true) {
-    return NextResponse.json({ error: check }, { status: check === "미설정" ? 503 : 401 });
+  const admin = await requireApiAdmin(request);
+  if (!admin) {
+    return NextResponse.json({ error: "인증이 필요해요." }, { status: 401 });
   }
 
   let body: { count?: number };

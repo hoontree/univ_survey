@@ -1,9 +1,12 @@
 import type { Metadata } from "next";
-import { Suspense } from "react";
+import { AccountManager } from "@/components/admin/AccountManager";
+import { AdminAuth } from "@/components/admin/AdminAuth";
+import { LogoutButton } from "@/components/admin/LogoutButton";
 import { TokenGenerator } from "@/components/admin/TokenGenerator";
 import { Card } from "@/components/ds/Card";
 import { StatBar } from "@/components/ds/StatBar";
-import { isAdminTokenValid } from "@/lib/admin";
+import { getSessionUser } from "@/lib/admin-auth";
+import { hasAnyAdmin, listAdmins } from "@/lib/admins";
 import { getStats, type TrackStats } from "@/lib/store";
 import { formatCode, listTokens, type TokenRecord } from "@/lib/tokens";
 import { getTrack, getTrackMeta, isTrackId } from "@/lib/tracks";
@@ -13,15 +16,17 @@ export const metadata: Metadata = {
   robots: { index: false, follow: false },
 };
 
-interface Props {
-  searchParams: Promise<{ token?: string }>;
-}
+export default async function AdminPage() {
+  const user = await getSessionUser();
 
-export default async function AdminPage({ searchParams }: Props) {
-  const { token } = await searchParams;
-  const check = isAdminTokenValid(token);
-
-  if (check !== true) {
+  if (!user) {
+    // 세션 없음 → 로그인 (관리자 계정이 하나도 없으면 최초 설정 모드)
+    let setup = false;
+    try {
+      setup = !(await hasAnyAdmin());
+    } catch {
+      // Firestore 접근 불가(로컬 ADC 없음 등) → 로그인 화면으로 폴백
+    }
     return (
       <main
         style={{
@@ -33,38 +38,19 @@ export default async function AdminPage({ searchParams }: Props) {
           flexDirection: "column",
           alignItems: "center",
           justifyContent: "center",
-          padding: "0 24px",
-          textAlign: "center",
+          padding: "48px 24px",
         }}
       >
-        <h1
-          style={{
-            margin: 0,
-            fontFamily: "var(--font-display)",
-            fontSize: "var(--text-h3)",
-            fontWeight: "var(--fw-bold)",
-            color: "var(--text-strong)",
-          }}
-        >
-          🔒 관리자 통계
-        </h1>
-        <p
-          style={{
-            margin: "16px 0 0",
-            fontSize: "var(--text-sm)",
-            lineHeight: "var(--leading-relaxed)",
-            color: "var(--text-muted)",
-          }}
-        >
-          {check === "미설정"
-            ? "ADMIN_TOKEN이 설정되지 않았습니다. 프로젝트 루트의 .env.local에 ADMIN_TOKEN=<토큰> 을 추가한 뒤 서버를 재시작하세요."
-            : "접근 권한이 없습니다. /admin?token=<토큰> 형식으로 접속하세요."}
-        </p>
+        <AdminAuth mode={setup ? "setup" : "login"} />
       </main>
     );
   }
 
-  const [stats, tokens] = await Promise.all([getStats(), listTokens()]);
+  const [stats, tokens, admins] = await Promise.all([
+    getStats(),
+    listTokens(),
+    listAdmins(),
+  ]);
   const totalResponses = stats.reduce((sum, s) => sum + s.total, 0);
 
   return (
@@ -77,42 +63,67 @@ export default async function AdminPage({ searchParams }: Props) {
         padding: "40px 24px",
       }}
     >
-      <p
+      <div
         style={{
-          margin: "0 0 8px",
-          fontSize: "var(--text-xs)",
-          fontWeight: "var(--fw-bold)",
-          letterSpacing: "var(--tracking-wide)",
-          color: "var(--text-faint)",
+          display: "flex",
+          alignItems: "flex-start",
+          justifyContent: "space-between",
+          gap: 16,
         }}
       >
-        신준섭 X 우주설 논술연구소
-      </p>
-      <h1
-        style={{
-          margin: 0,
-          fontFamily: "var(--font-display)",
-          fontSize: "var(--text-h2)",
-          fontWeight: "var(--fw-bold)",
-          color: "var(--text-strong)",
-        }}
-      >
-        📊 관리자
-      </h1>
-      <p style={{ margin: "8px 0 0", fontSize: "var(--text-sm)", color: "var(--text-muted)" }}>
-        전체 응답{" "}
-        <span
+        <div>
+          <p
+            style={{
+              margin: "0 0 8px",
+              fontSize: "var(--text-xs)",
+              fontWeight: "var(--fw-bold)",
+              letterSpacing: "var(--tracking-wide)",
+              color: "var(--text-faint)",
+            }}
+          >
+            신준섭 X 우주설 논술연구소
+          </p>
+          <h1
+            style={{
+              margin: 0,
+              fontFamily: "var(--font-display)",
+              fontSize: "var(--text-h2)",
+              fontWeight: "var(--fw-bold)",
+              color: "var(--text-strong)",
+            }}
+          >
+            📊 관리자
+          </h1>
+          <p style={{ margin: "8px 0 0", fontSize: "var(--text-sm)", color: "var(--text-muted)" }}>
+            <b style={{ color: "var(--text-secondary)" }}>{user}</b>님 · 전체 응답{" "}
+            <span style={{ fontFamily: "var(--font-display)", color: "var(--text-strong)" }}>
+              {totalResponses}
+            </span>
+            건
+          </p>
+        </div>
+        <LogoutButton />
+      </div>
+
+      <TokenSection tokens={tokens} />
+
+      <Card radius="xl" padding="24px" style={{ marginTop: 32 }}>
+        <h2
           style={{
+            margin: 0,
             fontFamily: "var(--font-display)",
+            fontSize: "var(--text-lg)",
+            fontWeight: "var(--fw-bold)",
             color: "var(--text-strong)",
           }}
         >
-          {totalResponses}
-        </span>
-        건
-      </p>
-
-      <TokenSection tokens={tokens} />
+          👤 관리자 계정
+        </h2>
+        <p style={{ margin: "6px 0 16px", fontSize: "var(--text-xs)", color: "var(--text-faint)" }}>
+          계정을 추가하면 다른 운영자도 아이디·비밀번호로 로그인할 수 있어요.
+        </p>
+        <AccountManager me={user} initialAdmins={admins} />
+      </Card>
 
       {stats.length === 0 && (
         <Card style={{ marginTop: 48, padding: 32, textAlign: "center" }}>
@@ -174,9 +185,7 @@ function TokenSection({ tokens }: { tokens: TokenRecord[] }) {
       </p>
 
       <div style={{ marginTop: 20 }}>
-        <Suspense fallback={null}>
-          <TokenGenerator />
-        </Suspense>
+        <TokenGenerator />
       </div>
 
       {tokens.length > 0 && (

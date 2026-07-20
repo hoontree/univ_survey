@@ -56,15 +56,22 @@ claude.ai/design 프로젝트 **유니버설 UNIVER設 Design System**(`8fd99337
 - 수강생 접근 제어: 설문 진입 시 토큰 유효성 확인(`POST /api/tokens/check`, 차감 없음), **결과 발급 시 1회 차감**(`POST /api/responses`에서 Firestore 트랜잭션으로 원자 처리). 한 토큰 = 2회
 - 마지막 문항은 자동 제출하지 않음 — 차감이 있는 행동이라 "결과 보기" 버튼으로 명시적으로 제출
 - 코드 형식: 혼동 문자(0/O/1/I/L) 제외 8자, `XXXX-XXXX` 표시. 무효 답변으로는 차감되지 않음(차감 전에 답변 검증)
-- 발급: `/admin?token=<ADMIN_TOKEN>`의 "이용 토큰" 섹션에서 개수 입력 → 생성·전체 복사. 목록에서 미사용/사용 중/소진 확인
+- 발급: `/admin` 로그인 후 "이용 토큰" 섹션에서 개수 입력 → 생성·전체 복사. 목록에서 미사용/사용 중/소진 확인
 - 랜딩의 자동 재생 미리보기(DemoShowcase)는 토큰 없이 볼 수 있는 홍보용 — API 호출·저장 없음
+
+## 관리자 (`/admin`)
+
+- **아이디·비밀번호 로그인**. 관리자 계정은 Firestore `admins` 컬렉션(비밀번호는 scrypt 해시)
+- **최초 설정**: 관리자 계정이 하나도 없으면 `/admin`이 "계정 만들기" 화면을 연다(first-run). 계정이 하나라도 생기면 자동으로 닫히고 로그인만 가능. **배포 직후 바로 첫 계정을 만들 것**
+- 세션은 HMAC 서명 쿠키(`univ_admin`, httpOnly, 30일). 서명 키는 기존 `ADMIN_TOKEN` 시크릿을 재사용
+- 로그인 후: 응답 통계(트랙별 응답 수·1위 분포·문항별 분포), 이용 토큰 생성/현황, 관리자 계정 추가·삭제·내 비밀번호 변경
+- API(`/api/tokens/generate`, `/api/responses/stats`)는 세션 쿠키 또는 `Authorization: Bearer <ADMIN_TOKEN>`(프로그래매틱/CLI) 둘 다 허용
+- 통계 조회는 전체 문서를 읽으므로 인스턴스 메모리에 60초 캐시
 
 ## 응답 통계
 
 - 설문 완료 시 `POST /api/responses`로 익명 저장(개인정보 없음). 결과는 서버에서 재계산해 기록
 - 저장소는 Firestore(`responses` 컬렉션). 인증은 ADC — Cloud Run은 자동, 로컬은 `gcloud auth application-default login`
-- 관리자 페이지: `/admin?token=<ADMIN_TOKEN>` — 트랙별 응답 수, 1위 추천 분포, 문항별 답변 분포
-- 통계 조회는 전체 문서를 읽으므로 인스턴스 메모리에 60초 캐시. 새로고침을 반복해도 읽기 할당량이 튀지 않음
 
 ## 배포 (GCP)
 
@@ -77,7 +84,7 @@ claude.ai/design 프로젝트 **유니버설 UNIVER設 Design System**(`8fd99337
 | 런타임 서비스 계정 | `universeol-run@universeol.iam.gserviceaccount.com` (Firestore 읽기·쓰기 + 해당 시크릿만) |
 | 빌드 서비스 계정 | `universeol-build@universeol.iam.gserviceaccount.com` (배포·이미지 푸시·연결 토큰 읽기) |
 | 자동 배포 | Cloud Build 트리거 `build-trigger` — `main` 푸시 시 `cloudbuild.yaml` 실행 |
-| 관리자 토큰 | Secret Manager `universeol-admin-token` → 컨테이너에 `ADMIN_TOKEN`으로 주입 |
+| 관리자 접근 | `/admin` 아이디·비밀번호 로그인. 세션 서명 키는 Secret Manager `universeol-admin-token` → `ADMIN_TOKEN`으로 주입 |
 | 스케일 | `min-instances=0` (평소 0원, 첫 접속 약 1~3초), 최대 10 |
 | 예산 알림 | 월 20,000원 · 50% / 90% / 100% |
 
@@ -107,19 +114,18 @@ gcloud run deploy universeol --source . --project=universeol --region=asia-north
 
 빌드 상태는 [Cloud Build 기록](https://console.cloud.google.com/cloud-build/builds?project=universeol)에서 볼 수 있습니다.
 
-### 관리자 토큰 확인
+### 관리자 접근
 
-값은 저장소·문서에 남기지 않습니다. 필요할 때 직접 조회하세요.
+배포 직후 `/admin`에 접속하면 최초 관리자 계정 만들기 화면이 나옵니다. 아이디·비밀번호를 정하면 그 뒤로는 로그인만 하면 됩니다. `gcloud`로 토큰을 꺼낼 필요 없습니다.
 
-```bash
-gcloud secrets versions access latest --secret=universeol-admin-token --project=universeol
-```
-
-토큰을 바꾸려면 새 버전을 추가하고 재배포하면 됩니다.
+`ADMIN_TOKEN`(`universeol-admin-token` 시크릿)은 이제 **세션 쿠키 서명 키**이자 프로그래매틱 Bearer 폴백입니다. 이 값을 교체하면 로그인 세션이 전부 무효화되어 재로그인이 필요합니다(계정·비밀번호는 그대로).
 
 ```bash
+# 세션 서명 키 교체 (전원 재로그인 필요, 계정은 유지)
 openssl rand -hex 24 | tr -d '\n' | gcloud secrets versions add universeol-admin-token --data-file=- --project=universeol
 ```
+
+관리자 비밀번호를 잊었고 계정이 하나뿐이라면, Firestore `admins` 컬렉션에서 그 문서를 지우면 `/admin`이 다시 최초 설정 모드로 돌아갑니다.
 
 ## 남은 것
 

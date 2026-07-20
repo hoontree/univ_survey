@@ -1,19 +1,14 @@
 import { NextResponse } from "next/server";
-import { isAdminTokenValid } from "@/lib/admin";
+import { requireApiAdmin } from "@/lib/admin-auth";
 import { getStats } from "@/lib/store";
 
 export const runtime = "nodejs";
 
-/** 관리자 통계 조회. Authorization: Bearer <ADMIN_TOKEN> 또는 ?token= */
+/** 관리자 통계 조회 — 세션 쿠키 또는 Bearer ADMIN_TOKEN. */
 export async function GET(request: Request) {
-  const url = new URL(request.url);
-  const token =
-    request.headers.get("authorization")?.replace(/^Bearer\s+/i, "") ??
-    url.searchParams.get("token");
-
-  const check = isAdminTokenValid(token);
-  if (check !== true) {
-    return NextResponse.json({ error: check }, { status: check === "미설정" ? 503 : 401 });
+  const admin = await requireApiAdmin(request);
+  if (!admin) {
+    return NextResponse.json({ error: "인증이 필요해요." }, { status: 401 });
   }
   return NextResponse.json({ stats: await getStats() });
 }

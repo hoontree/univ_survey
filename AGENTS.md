@@ -13,6 +13,7 @@
 ## 작업 규칙
 
 - 응답 저장(`/api/responses`)은 **이용 토큰 차감과 원자적으로 묶여 있다** (`src/lib/tokens.ts`의 Firestore 트랜잭션). 토큰 검증을 우회하는 저장 경로를 만들지 말 것. 랜딩 데모는 의도적으로 API를 호출하지 않는다.
+- 관리자 인증은 아이디·비밀번호 로그인(세션 쿠키). 비밀번호는 `src/lib/password.ts`의 scrypt 해시로만 저장 — 평문을 코드·로그·Firestore에 남기지 말 것. 세션 서명 키는 `ADMIN_TOKEN`(재사용). 관리자 API는 `requireApiAdmin`(세션 쿠키 또는 Bearer)로 보호한다. 인증 계층: `password.ts`/`session.ts`(순수, 테스트됨) → `admins.ts`(Firestore) → `admin-auth.ts`(next/headers).
 
 - 기준표 로직(`▲`=답변≤N 득표, 난이도 문항은 정확 일치, 성별 하드 필터)을 바꿀 땐 `src/lib/scoring.test.ts`를 먼저 확인. 채점 규칙 변경은 반드시 테스트로 검증.
 - 시크릿 값(`ADMIN_TOKEN` 등)을 코드·로그·커밋·대화에 남기지 않는다. Secret Manager에만 둔다.

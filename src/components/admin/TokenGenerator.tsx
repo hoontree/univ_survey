@@ -1,16 +1,13 @@
 "use client";
 
-import { useSearchParams } from "next/navigation";
 import { useState } from "react";
 import { Button } from "@/components/ds/Button";
 
 /**
  * 관리자 토큰 생성 폼 — 개수를 입력하면 코드 목록이 생성된다.
- * 인증은 /admin?token= 의 관리자 토큰을 그대로 Bearer로 전달.
+ * 인증은 로그인 세션 쿠키로 (same-origin fetch에 자동 포함).
  */
 export function TokenGenerator() {
-  const searchParams = useSearchParams();
-  const adminToken = searchParams.get("token") ?? "";
   const [count, setCount] = useState("30");
   const [busy, setBusy] = useState(false);
   const [codes, setCodes] = useState<string[] | null>(null);
@@ -28,10 +25,7 @@ export function TokenGenerator() {
     try {
       const res = await fetch("/api/tokens/generate", {
         method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-          Authorization: `Bearer ${adminToken}`,
-        },
+        headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ count: n }),
       });
       const data = await res.json();
