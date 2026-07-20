@@ -1,3 +1,22 @@
+# 유니버설 UNIVER設 — 에이전트 안내
+
+우주설(수리논술 강사)의 대학 추천 설문 서비스. 학생이 계열(의대/약대/비메디컬)을 고르고 문항에 답하면, 각 답변이 강사 기준표를 충족한 대학에 투표되고 최다 득표 대학이 추천된다. 전체 구조·배포·규칙은 [README.md](README.md)에 있으니 먼저 읽을 것.
+
+## 진실의 출처 (직접 손대지 말 것)
+
+이 세 가지는 **생성물**이다. 직접 편집하지 말고 소스를 고친 뒤 재생성한다.
+
+- `src/data/criteria/*.json` ← `data-src/*.xlsx` (강사 기준표). 재생성: `npm run convert`
+- `src/app/fonts/*.woff2` ← `~/Downloads/ONE Mobile *` (원본 폰트, 미커밋). 재생성: `python3 scripts/build_fonts.py`
+- 디자인 토큰·컴포넌트 ← claude.ai/design 프로젝트 `8fd99337-7104-4e28-9d99-9c19f781a955`. 큰 디자인 변경은 거기서 먼저 반영 후 `DesignSync`로 가져온다.
+
+## 작업 규칙
+
+- 기준표 로직(`▲`=답변≤N 득표, 난이도 문항은 정확 일치, 성별 하드 필터)을 바꿀 땐 `src/lib/scoring.test.ts`를 먼저 확인. 채점 규칙 변경은 반드시 테스트로 검증.
+- 시크릿 값(`ADMIN_TOKEN` 등)을 코드·로그·커밋·대화에 남기지 않는다. Secret Manager에만 둔다.
+- `main` 푸시 시 Cloud Build가 자동 배포한다. 커밋 전 `npm test`·`npm run build`·`npm run lint` 통과 확인.
+- `src/data/admission-info.ts`(전형 정보)는 이미지 전사본이라 **강사 검수 전까지 사실 확정 아님**. 수치를 근거로 다른 판단을 내리지 말 것.
+
 <!-- BEGIN:nextjs-agent-rules -->
 # This is NOT the Next.js you know
 
