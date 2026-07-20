@@ -1,0 +1,56 @@
+# 유니버설 — GitHub main 푸시 시 Cloud Run 자동 배포
+#
+# 트리거 연결 방법은 README의 "배포" 절 참고.
+# 이미지는 Artifact Registry(cloud-run-source-deploy)에 커밋 SHA 태그로 쌓인다.
+
+substitutions:
+  _REGION: asia-northeast3
+  _SERVICE: universeol
+  _RUNTIME_SA: universeol-run@universeol.iam.gserviceaccount.com
+
+images:
+  - "${_REGION}-docker.pkg.dev/${PROJECT_ID}/cloud-run-source-deploy/${_SERVICE}:${SHORT_SHA}"
+
+steps:
+  - id: build
+    name: gcr.io/cloud-builders/docker
+    args:
+      - build
+      - "-t"
+      - "${_REGION}-docker.pkg.dev/${PROJECT_ID}/cloud-run-source-deploy/${_SERVICE}:${SHORT_SHA}"
+      - "-t"
+      - "${_REGION}-docker.pkg.dev/${PROJECT_ID}/cloud-run-source-deploy/${_SERVICE}:latest"
+      - "."
+
+  - id: push
+    name: gcr.io/cloud-builders/docker
+    args:
+      - push
+      - "--all-tags"
+      - "${_REGION}-docker.pkg.dev/${PROJECT_ID}/cloud-run-source-deploy/${_SERVICE}"
+
+  - id: deploy
+    name: gcr.io/google.com/cloudsdktool/cloud-sdk:slim
+    entrypoint: gcloud
+    args:
+      - run
+      - deploy
+      - "${_SERVICE}"
+      - "--image=${_REGION}-docker.pkg.dev/${PROJECT_ID}/cloud-run-source-deploy/${_SERVICE}:${SHORT_SHA}"
+      - "--region=${_REGION}"
+      - "--platform=managed"
+      - "--service-account=${_RUNTIME_SA}"
+      - "--set-env-vars=GOOGLE_CLOUD_PROJECT=${PROJECT_ID}"
+      - "--set-secrets=ADMIN_TOKEN=universeol-admin-token:latest"
+      - "--min-instances=0"
+      - "--max-instances=10"
+      - "--memory=512Mi"
+      - "--cpu=1"
+      - "--allow-unauthenticated"
+      - "--quiet"
+
+options:
+  logging: CLOUD_LOGGING_ONLY
+  machineType: E2_HIGHCPU_8
+
+timeout: 1200s

@@ -53,12 +53,66 @@ claude.ai/design 프로젝트 **유니버설 UNIVER設 Design System**(`8fd99337
 ## 응답 통계
 
 - 설문 완료 시 `POST /api/responses`로 익명 저장(개인정보 없음). 결과는 서버에서 재계산해 기록
+- 저장소는 Firestore(`responses` 컬렉션). 인증은 ADC — Cloud Run은 자동, 로컬은 `gcloud auth application-default login`
 - 관리자 페이지: `/admin?token=<ADMIN_TOKEN>` — 트랙별 응답 수, 1위 추천 분포, 문항별 답변 분포
-- `ADMIN_TOKEN`은 `.env.local`에 설정 (미설정 시 관리자 기능 전체 비활성). **배포 전 반드시 변경**
+- 통계 조회는 전체 문서를 읽으므로 인스턴스 메모리에 60초 캐시. 새로고침을 반복해도 읽기 할당량이 튀지 않음
 
-## 배포 시 주의
+## 배포 (GCP)
 
-- 로컬 SQLite(`data/responses.db`)는 Vercel 등 서버리스에서 유지되지 않음 → `src/lib/store.ts`의 `saveResponse`/`getStats`만 호스팅 DB(Neon/Supabase/Turso) 구현으로 교체하면 됨 (인터페이스 유지)
+운영 환경은 **Cloud Run + Firestore**(둘 다 `asia-northeast3` 서울)입니다.
+
+| 항목 | 값 |
+|---|---|
+| 프로젝트 | `universeol` |
+| 서비스 URL | https://universeol-588223559887.asia-northeast3.run.app |
+| 런타임 서비스 계정 | `universeol-run@universeol.iam.gserviceaccount.com` (Firestore 읽기·쓰기 + 해당 시크릿만) |
+| 관리자 토큰 | Secret Manager `universeol-admin-token` → 컨테이너에 `ADMIN_TOKEN`으로 주입 |
+| 스케일 | `min-instances=0` (평소 0원, 첫 접속 약 1~3초), 최대 10 |
+| 예산 알림 | 월 20,000원 · 50% / 90% / 100% |
+
+### 수동 배포
+
+```bash
+gcloud run deploy universeol --source . --project=universeol --region=asia-northeast3
+```
+
+기존 설정(서비스 계정·시크릿·스케일)은 유지되므로 플래그를 다시 줄 필요는 없습니다.
+
+### GitHub 푸시 시 자동 배포
+
+빌드 정의는 `cloudbuild.yaml`에 있습니다. 트리거를 처음 붙일 때만 GitHub 앱 설치(브라우저 승인)가 필요합니다.
+
+1. [Cloud Build 트리거 페이지](https://console.cloud.google.com/cloud-build/triggers?project=universeol)에서 **저장소 연결** → GitHub 선택 → `hoontree/univ_survey` 승인
+2. 연결 후 트리거 생성:
+
+```bash
+gcloud builds triggers create github \
+  --name=universeol-main \
+  --region=asia-northeast3 \
+  --repo-owner=hoontree --repo-name=univ_survey \
+  --branch-pattern='^main$' \
+  --build-config=cloudbuild.yaml \
+  --project=universeol
+```
+
+### 관리자 토큰 확인
+
+값은 저장소·문서에 남기지 않습니다. 필요할 때 직접 조회하세요.
+
+```bash
+gcloud secrets versions access latest --secret=universeol-admin-token --project=universeol
+```
+
+토큰을 바꾸려면 새 버전을 추가하고 재배포하면 됩니다.
+
+```bash
+openssl rand -hex 24 | tr -d '\n' | gcloud secrets versions add universeol-admin-token --data-file=- --project=universeol
+```
+
+## 남은 것
+
 - `admission-info.ts`의 전형 정보는 엑셀 임베드 이미지를 전사한 것 — 발행 전 강사 검수 필수
+- Cloud Build가 쓰는 Compute 기본 서비스 계정은 GCP 기본값인 `roles/editor`라 권한이 넓습니다. 조이려면 `roles/run.admin` + `roles/artifactregistry.writer` + 런타임 SA에 대한 `roles/iam.serviceAccountUser`로 교체
+- 응답은 입시 시즌 종료 후 삭제하기로 함 — Firestore `responses` 컬렉션을 비우면 됨
 - 디자인 수정 시: 토큰은 `src/app/globals.css`, 컴포넌트는 `src/components/ds/`, 카피는 각 랜딩 컴포넌트(`src/components/landing/`)에 모여 있음. 원본은 claude.ai/design 프로젝트이므로 큰 변경은 거기서 먼저 반영하는 편이 좋음
 - 로고는 흰 배경 JPG 한 장뿐이라 다크 표면에서 녹아웃 처리(`public/brand/univer-seol-mark.png`는 배경을 알파로 뺀 파생본). 투명 배경 SVG 원본을 받으면 교체 권장

@@ -22,7 +22,7 @@ export async function POST(request: Request) {
 
   try {
     const result = computeResult(getTrack(track), answers);
-    const id = saveResponse(track, answers, result.winners);
+    const id = await saveResponse(track, answers, result.winners);
     return NextResponse.json({ ok: true, id });
   } catch (error) {
     return NextResponse.json(

@@ -15,5 +15,5 @@ export async function GET(request: Request) {
   if (check !== true) {
     return NextResponse.json({ error: check }, { status: check === "미설정" ? 503 : 401 });
   }
-  return NextResponse.json({ stats: getStats() });
+  return NextResponse.json({ stats: await getStats() });
 }

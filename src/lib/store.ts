@@ -1,43 +1,42 @@
-import fs from "node:fs";
-import path from "node:path";
-import Database from "better-sqlite3";
+import { Firestore, type Settings } from "@google-cloud/firestore";
 import type { Answers, TrackId } from "@/lib/types";
 
 /**
- * 응답 저장소 — 로컬 파일 SQLite.
+ * 응답 저장소 — Firestore (asia-northeast3).
  *
- * ⚠️ 배포 교체 지점: Vercel 같은 서버리스 환경은 로컬 파일이 유지되지 않으므로
- *    배포 시 이 파일의 함수들만 호스팅 DB(Neon/Supabase/Turso) 구현으로 바꾸면 된다.
- *    인터페이스(saveResponse / getStats)는 그대로 유지할 것.
+ * 인증은 Application Default Credentials로 자동 해결된다.
+ *  - Cloud Run: 서비스 계정이 자동 주입
+ *  - 로컬: `gcloud auth application-default login`
+ *
+ * 저장 내용은 트랙·답변 번호·추천 결과뿐이며 개인정보는 담지 않는다.
  */
-const DB_DIR = path.join(process.cwd(), "data");
-const DB_PATH = path.join(DB_DIR, "responses.db");
+const COLLECTION = "responses";
 
-let db: Database.Database | null = null;
+let db: Firestore | null = null;
 
-function getDb(): Database.Database {
+function getDb(): Firestore {
   if (!db) {
-    fs.mkdirSync(DB_DIR, { recursive: true });
-    db = new Database(DB_PATH);
-    db.pragma("journal_mode = WAL");
-    db.exec(`
-      CREATE TABLE IF NOT EXISTS responses (
-        id         INTEGER PRIMARY KEY AUTOINCREMENT,
-        track      TEXT NOT NULL,
-        answers    TEXT NOT NULL, -- JSON { questionId: value }
-        winners    TEXT NOT NULL, -- JSON string[] (서버에서 재계산한 공동 1위)
-        created_at TEXT NOT NULL DEFAULT (datetime('now', 'localtime'))
-      )
-    `);
+    const settings: Settings = {};
+    // Cloud Run에서는 메타데이터로 자동 해결되지만, 로컬에서는 명시가 필요할 수 있다
+    const projectId = process.env.GOOGLE_CLOUD_PROJECT ?? process.env.GCP_PROJECT;
+    if (projectId) settings.projectId = projectId;
+    db = new Firestore(settings);
   }
   return db;
 }
 
-export function saveResponse(track: TrackId, answers: Answers, winners: string[]): number {
-  const result = getDb()
-    .prepare("INSERT INTO responses (track, answers, winners) VALUES (?, ?, ?)")
-    .run(track, JSON.stringify(answers), JSON.stringify(winners));
-  return Number(result.lastInsertRowid);
+export async function saveResponse(
+  track: TrackId,
+  answers: Answers,
+  winners: string[],
+): Promise<string> {
+  const doc = await getDb().collection(COLLECTION).add({
+    track,
+    answers,
+    winners,
+    createdAt: new Date().toISOString(),
+  });
+  return doc.id;
 }
 
 export interface TrackStats {
@@ -50,13 +49,29 @@ export interface TrackStats {
   lastResponseAt: string | null;
 }
 
-export function getStats(): TrackStats[] {
-  const rows = getDb()
-    .prepare("SELECT track, answers, winners, created_at FROM responses ORDER BY id")
-    .all() as { track: TrackId; answers: string; winners: string; created_at: string }[];
+interface ResponseDoc {
+  track: TrackId;
+  answers: Answers;
+  winners: string[];
+  createdAt: string;
+}
+
+/* 관리자 페이지는 강사가 직접 열어보므로 새로고침이 잦을 수 있다.
+   매번 전체 문서를 읽으면 Firestore 읽기 할당량이 빠르게 소진되어,
+   인스턴스 메모리에 짧게 캐시한다. (인스턴스가 꺼지면 자연히 사라짐) */
+const STATS_TTL_MS = 60_000;
+let statsCache: { at: number; value: TrackStats[] } | null = null;
+
+export async function getStats(): Promise<TrackStats[]> {
+  if (statsCache && Date.now() - statsCache.at < STATS_TTL_MS) {
+    return statsCache.value;
+  }
+
+  const snapshot = await getDb().collection(COLLECTION).orderBy("createdAt").get();
 
   const byTrack = new Map<TrackId, TrackStats>();
-  for (const row of rows) {
+  for (const doc of snapshot.docs) {
+    const row = doc.data() as ResponseDoc;
     let stats = byTrack.get(row.track);
     if (!stats) {
       stats = {
@@ -69,14 +84,17 @@ export function getStats(): TrackStats[] {
       byTrack.set(row.track, stats);
     }
     stats.total += 1;
-    stats.lastResponseAt = row.created_at;
-    for (const winner of JSON.parse(row.winners) as string[]) {
+    stats.lastResponseAt = row.createdAt;
+    for (const winner of row.winners ?? []) {
       stats.winnerCounts[winner] = (stats.winnerCounts[winner] ?? 0) + 1;
     }
-    for (const [qid, value] of Object.entries(JSON.parse(row.answers) as Answers)) {
+    for (const [qid, value] of Object.entries(row.answers ?? {})) {
       stats.answerCounts[qid] ??= {};
       stats.answerCounts[qid][value] = (stats.answerCounts[qid][value] ?? 0) + 1;
     }
   }
-  return [...byTrack.values()];
+
+  const value = [...byTrack.values()];
+  statsCache = { at: Date.now(), value };
+  return value;
 }

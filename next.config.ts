@@ -1,8 +1,8 @@
 import type { NextConfig } from "next";
 
 const nextConfig: NextConfig = {
-  // better-sqlite3는 네이티브 모듈이라 번들링 대상에서 제외
-  serverExternalPackages: ["better-sqlite3"],
+  // Cloud Run 컨테이너용 최소 런타임 번들 (.next/standalone)
+  output: "standalone",
 };
 
 export default nextConfig;

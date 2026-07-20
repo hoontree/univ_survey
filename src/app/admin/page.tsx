@@ -61,7 +61,7 @@ export default async function AdminPage({ searchParams }: Props) {
     );
   }
 
-  const stats = getStats();
+  const stats = await getStats();
   const totalResponses = stats.reduce((sum, s) => sum + s.total, 0);
 
   return (
