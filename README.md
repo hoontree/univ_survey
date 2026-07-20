@@ -19,7 +19,7 @@ npm test           # 채점 엔진 단위 테스트
 | `src/data/criteria/*.json` | 변환된 트랙별 기준 데이터 (커밋 대상) |
 | `src/data/admission-info.ts` | 결과 페이지 하단 수능최저·고사일정 표 (**강사 검수 필요**) |
 | `src/lib/scoring.ts` | 득표 집계 엔진 (하드 필터·공동 1위 처리) |
-| `src/lib/store.ts` | 응답 저장소 (SQLite) — **배포 시 교체 지점** |
+| `src/lib/store.ts` | 응답 저장소 (Firestore) |
 | `src/app/` | 랜딩(`/`) → 설문(`/survey/[track]`) → 결과(`…/result`), 관리자(`/admin`) |
 | `src/app/globals.css` | 디자인 토큰 + 시그니처 효과 + 컴포넌트 CSS |
 | `src/components/ds/` | 디자인 시스템 컴포넌트 11종 |
@@ -66,6 +66,8 @@ claude.ai/design 프로젝트 **유니버설 UNIVER設 Design System**(`8fd99337
 | 프로젝트 | `universeol` |
 | 서비스 URL | https://universeol-588223559887.asia-northeast3.run.app |
 | 런타임 서비스 계정 | `universeol-run@universeol.iam.gserviceaccount.com` (Firestore 읽기·쓰기 + 해당 시크릿만) |
+| 빌드 서비스 계정 | `universeol-build@universeol.iam.gserviceaccount.com` (배포·이미지 푸시·연결 토큰 읽기) |
+| 자동 배포 | Cloud Build 트리거 `build-trigger` — `main` 푸시 시 `cloudbuild.yaml` 실행 |
 | 관리자 토큰 | Secret Manager `universeol-admin-token` → 컨테이너에 `ADMIN_TOKEN`으로 주입 |
 | 스케일 | `min-instances=0` (평소 0원, 첫 접속 약 1~3초), 최대 10 |
 | 예산 알림 | 월 20,000원 · 50% / 90% / 100% |
@@ -80,20 +82,21 @@ gcloud run deploy universeol --source . --project=universeol --region=asia-north
 
 ### GitHub 푸시 시 자동 배포
 
-빌드 정의는 `cloudbuild.yaml`에 있습니다. 트리거를 처음 붙일 때만 GitHub 앱 설치(브라우저 승인)가 필요합니다.
+구성 완료. `main`에 푸시하면 `cloudbuild.yaml`이 실행되어 이미지 빌드 → Artifact Registry 푸시 → Cloud Run 배포까지 자동으로 진행됩니다.
 
-1. [Cloud Build 트리거 페이지](https://console.cloud.google.com/cloud-build/triggers?project=universeol)에서 **저장소 연결** → GitHub 선택 → `hoontree/univ_survey` 승인
-2. 연결 후 트리거 생성:
+빌드는 전용 계정 `universeol-build@`로 돌아가며 다음 권한만 갖습니다.
 
-```bash
-gcloud builds triggers create github \
-  --name=universeol-main \
-  --region=asia-northeast3 \
-  --repo-owner=hoontree --repo-name=univ_survey \
-  --branch-pattern='^main$' \
-  --build-config=cloudbuild.yaml \
-  --project=universeol
-```
+| 역할 | 용도 |
+|---|---|
+| `roles/run.admin` | Cloud Run 배포 |
+| `roles/artifactregistry.writer` | 이미지 푸시 |
+| `roles/logging.logWriter` | 빌드 로그 기록 |
+| `roles/cloudbuild.builds.builder` | 빌드 실행 |
+| `roles/developerconnect.readTokenAccessor` | GitHub 연결에서 소스 가져오기 |
+| `iam.serviceAccountUser` (런타임 SA 한정) | 런타임 계정으로 서비스 기동 |
+| `secretmanager.secretAccessor` (해당 시크릿 한정) | 배포 시 `ADMIN_TOKEN` 연결 |
+
+빌드 상태는 [Cloud Build 기록](https://console.cloud.google.com/cloud-build/builds?project=universeol)에서 볼 수 있습니다.
 
 ### 관리자 토큰 확인
 
@@ -112,7 +115,7 @@ openssl rand -hex 24 | tr -d '\n' | gcloud secrets versions add universeol-admin
 ## 남은 것
 
 - `admission-info.ts`의 전형 정보는 엑셀 임베드 이미지를 전사한 것 — 발행 전 강사 검수 필수
-- Cloud Build가 쓰는 Compute 기본 서비스 계정은 GCP 기본값인 `roles/editor`라 권한이 넓습니다. 조이려면 `roles/run.admin` + `roles/artifactregistry.writer` + 런타임 SA에 대한 `roles/iam.serviceAccountUser`로 교체
+- Compute 기본 서비스 계정(`588223559887-compute@`)은 GCP 기본값인 `roles/editor`를 갖고 있습니다. 자동 배포는 이제 전용 계정을 쓰므로, 수동 `--source` 배포를 안 쓸 거라면 이 계정의 권한을 낮춰도 됩니다
 - 응답은 입시 시즌 종료 후 삭제하기로 함 — Firestore `responses` 컬렉션을 비우면 됨
 - 디자인 수정 시: 토큰은 `src/app/globals.css`, 컴포넌트는 `src/components/ds/`, 카피는 각 랜딩 컴포넌트(`src/components/landing/`)에 모여 있음. 원본은 claude.ai/design 프로젝트이므로 큰 변경은 거기서 먼저 반영하는 편이 좋음
 - 로고는 흰 배경 JPG 한 장뿐이라 다크 표면에서 녹아웃 처리(`public/brand/univer-seol-mark.png`는 배경을 알파로 뺀 파생본). 투명 배경 SVG 원본을 받으면 교체 권장
