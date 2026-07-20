@@ -1,4 +1,4 @@
-/* eslint-disable @next/next/no-img-element */
+import { BrandLockup } from "@/components/BrandLockup";
 
 export function SiteFooter() {
   return (
@@ -10,17 +10,10 @@ export function SiteFooter() {
         textAlign: "center",
       }}
     >
-      {/* 흰 배경 JPG 엠블럼 — 다크 표면에서는 녹아웃 처리 */}
-      <img
-        src="/brand/univer-seol-mark.png"
-        alt="우주설 수리논술"
-        width={40}
-        height={40}
-        style={{ display: "inline-block", opacity: 0.5 }}
-      />
+      <BrandLockup variant="footer" />
       <p
         style={{
-          margin: "16px auto 0",
+          margin: "20px auto 0",
           maxWidth: 512,
           fontSize: "var(--text-xs)",
           lineHeight: 1.85,
@@ -39,7 +32,7 @@ export function SiteFooter() {
           color: "var(--text-ghost)",
         }}
       >
-        2027 우주설 수리논술
+        2027 신준섭 X 우주설 논술연구소
       </p>
     </footer>
   );

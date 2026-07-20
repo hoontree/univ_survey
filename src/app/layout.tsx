@@ -33,14 +33,14 @@ const notoSansKr = Noto_Sans_KR({
 
 export const metadata: Metadata = {
   title: {
-    default: "유니버설 UNIVERSEOL — 나의 대학이 열리는 곳",
+    default: "논술 전형 추천 시스템 | 유니버설",
     template: "%s | 유니버설",
   },
   description:
-    "우주설 수리논술의 대학 추천 설문. 3분 설문으로 의대·약대·비메디컬 논술 지원 대학을 찾아드려요.",
+    "신준섭 X 우주설 논술연구소의 논술 전형 추천 시스템. 3분 설문으로 의대·약대·비메디컬 논술 지원 대학을 찾아드려요.",
   openGraph: {
-    title: "유니버설 UNIVERSEOL",
-    description: "설문 3분, 우주설이 찾아주는 나의 논술 1지망",
+    title: "논술 전형 추천 시스템 — 유니버설",
+    description: "신준섭 X 우주설 논술연구소 · 설문 3분, 나의 논술 1지망 찾기",
     type: "website",
     locale: "ko_KR",
     siteName: "유니버설",

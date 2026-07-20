@@ -1,12 +1,15 @@
 import type { Metadata } from "next";
+import { Suspense } from "react";
+import { TokenGenerator } from "@/components/admin/TokenGenerator";
 import { Card } from "@/components/ds/Card";
 import { StatBar } from "@/components/ds/StatBar";
 import { isAdminTokenValid } from "@/lib/admin";
 import { getStats, type TrackStats } from "@/lib/store";
+import { formatCode, listTokens, type TokenRecord } from "@/lib/tokens";
 import { getTrack, getTrackMeta, isTrackId } from "@/lib/tracks";
 
 export const metadata: Metadata = {
-  title: "관리자 통계",
+  title: "관리자",
   robots: { index: false, follow: false },
 };
 
@@ -61,7 +64,7 @@ export default async function AdminPage({ searchParams }: Props) {
     );
   }
 
-  const stats = await getStats();
+  const [stats, tokens] = await Promise.all([getStats(), listTokens()]);
   const totalResponses = stats.reduce((sum, s) => sum + s.total, 0);
 
   return (
@@ -74,6 +77,17 @@ export default async function AdminPage({ searchParams }: Props) {
         padding: "40px 24px",
       }}
     >
+      <p
+        style={{
+          margin: "0 0 8px",
+          fontSize: "var(--text-xs)",
+          fontWeight: "var(--fw-bold)",
+          letterSpacing: "var(--tracking-wide)",
+          color: "var(--text-faint)",
+        }}
+      >
+        신준섭 X 우주설 논술연구소
+      </p>
       <h1
         style={{
           margin: 0,
@@ -83,7 +97,7 @@ export default async function AdminPage({ searchParams }: Props) {
           color: "var(--text-strong)",
         }}
       >
-        📊 응답 통계
+        📊 관리자
       </h1>
       <p style={{ margin: "8px 0 0", fontSize: "var(--text-sm)", color: "var(--text-muted)" }}>
         전체 응답{" "}
@@ -97,6 +111,8 @@ export default async function AdminPage({ searchParams }: Props) {
         </span>
         건
       </p>
+
+      <TokenSection tokens={tokens} />
 
       {stats.length === 0 && (
         <Card style={{ marginTop: 48, padding: 32, textAlign: "center" }}>
@@ -114,6 +130,142 @@ export default async function AdminPage({ searchParams }: Props) {
         ))}
       </div>
     </main>
+  );
+}
+
+const LIST_LIMIT = 50;
+
+function TokenSection({ tokens }: { tokens: TokenRecord[] }) {
+  const unused = tokens.filter((t) => t.uses === 0).length;
+  const exhausted = tokens.filter((t) => t.uses >= t.maxUses).length;
+  const inUse = tokens.length - unused - exhausted;
+
+  return (
+    <Card radius="xl" padding="24px" style={{ marginTop: 32 }}>
+      <header
+        style={{
+          display: "flex",
+          flexWrap: "wrap",
+          alignItems: "center",
+          justifyContent: "space-between",
+          gap: 12,
+        }}
+      >
+        <h2
+          style={{
+            margin: 0,
+            fontFamily: "var(--font-display)",
+            fontSize: "var(--text-lg)",
+            fontWeight: "var(--fw-bold)",
+            color: "var(--text-strong)",
+          }}
+        >
+          🎟️ 이용 토큰
+        </h2>
+        <p style={{ margin: 0, fontSize: "var(--text-xs)", color: "var(--text-muted)" }}>
+          전체 <b style={{ color: "var(--text-strong)" }}>{tokens.length}</b> · 미사용{" "}
+          <b style={{ color: "var(--success)" }}>{unused}</b> · 사용 중{" "}
+          <b style={{ color: "var(--text-accent)" }}>{inUse}</b> · 소진{" "}
+          <b style={{ color: "var(--danger)" }}>{exhausted}</b>
+        </p>
+      </header>
+      <p style={{ margin: "6px 0 0", fontSize: "var(--text-xs)", color: "var(--text-faint)" }}>
+        토큰 1개로 결과를 2회 받을 수 있어요. 수강생에게 한 코드씩 나눠주세요.
+      </p>
+
+      <div style={{ marginTop: 20 }}>
+        <Suspense fallback={null}>
+          <TokenGenerator />
+        </Suspense>
+      </div>
+
+      {tokens.length > 0 && (
+        <details style={{ marginTop: 20 }}>
+          <summary
+            style={{
+              cursor: "pointer",
+              fontSize: "var(--text-sm)",
+              fontWeight: "var(--fw-bold)",
+              color: "var(--text-secondary)",
+            }}
+          >
+            발급된 토큰 목록 (최근 {Math.min(tokens.length, LIST_LIMIT)}개)
+          </summary>
+          <div
+            style={{
+              marginTop: 12,
+              overflowX: "auto",
+              borderRadius: "var(--radius-lg)",
+              border: "1px solid var(--border-subtle)",
+            }}
+          >
+            <table
+              className="univ-table"
+              style={{
+                width: "100%",
+                minWidth: 420,
+                borderCollapse: "collapse",
+                fontSize: "var(--text-xs)",
+                textAlign: "left",
+              }}
+            >
+              <thead>
+                <tr style={{ background: "var(--surface-raised)" }}>
+                  {["코드", "사용", "상태", "생성일"].map((col) => (
+                    <th
+                      key={col}
+                      style={{
+                        padding: "8px 12px",
+                        borderBottom: "1px solid var(--border-subtle)",
+                        fontWeight: "var(--fw-bold)",
+                        color: "var(--text-secondary)",
+                      }}
+                    >
+                      {col}
+                    </th>
+                  ))}
+                </tr>
+              </thead>
+              <tbody>
+                {tokens.slice(0, LIST_LIMIT).map((t) => {
+                  const state =
+                    t.uses >= t.maxUses ? "소진" : t.uses > 0 ? "사용 중" : "미사용";
+                  const color =
+                    t.uses >= t.maxUses
+                      ? "var(--danger)"
+                      : t.uses > 0
+                        ? "var(--text-accent)"
+                        : "var(--success)";
+                  return (
+                    <tr key={t.code} style={{ borderBottom: "1px solid var(--w-06)" }}>
+                      <td
+                        style={{
+                          padding: "8px 12px",
+                          fontFamily: "ui-monospace, Menlo, monospace",
+                          letterSpacing: "0.06em",
+                          color: "var(--text-primary)",
+                        }}
+                      >
+                        {formatCode(t.code)}
+                      </td>
+                      <td style={{ padding: "8px 12px", color: "var(--text-muted)" }}>
+                        {t.uses} / {t.maxUses}
+                      </td>
+                      <td style={{ padding: "8px 12px", fontWeight: "var(--fw-bold)", color }}>
+                        {state}
+                      </td>
+                      <td style={{ padding: "8px 12px", color: "var(--text-faint)" }}>
+                        {t.createdAt.slice(0, 10)}
+                      </td>
+                    </tr>
+                  );
+                })}
+              </tbody>
+            </table>
+          </div>
+        </details>
+      )}
+    </Card>
   );
 }
 

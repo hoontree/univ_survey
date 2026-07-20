@@ -30,3 +30,57 @@ export function clearAnswers(track: TrackId): void {
     // ignore
   }
 }
+
+/* ── 이용 토큰 (수강생 접근 코드) ── */
+
+const TOKEN_KEY = "universeol:token";
+const grantKey = (track: TrackId) => `universeol:granted:${track}`;
+
+export function loadAccessToken(): string | null {
+  try {
+    return sessionStorage.getItem(TOKEN_KEY);
+  } catch {
+    return null;
+  }
+}
+
+export function saveAccessToken(code: string): void {
+  try {
+    sessionStorage.setItem(TOKEN_KEY, code);
+  } catch {
+    // ignore
+  }
+}
+
+export function clearAccessToken(): void {
+  try {
+    sessionStorage.removeItem(TOKEN_KEY);
+  } catch {
+    // ignore
+  }
+}
+
+/** 결과 발급 성공(토큰 차감 완료) 표시 — 결과 페이지 진입 조건 */
+export function saveGrant(track: TrackId): void {
+  try {
+    sessionStorage.setItem(grantKey(track), "1");
+  } catch {
+    // ignore
+  }
+}
+
+export function hasGrant(track: TrackId): boolean {
+  try {
+    return sessionStorage.getItem(grantKey(track)) === "1";
+  } catch {
+    return false;
+  }
+}
+
+export function clearGrant(track: TrackId): void {
+  try {
+    sessionStorage.removeItem(grantKey(track));
+  } catch {
+    // ignore
+  }
+}

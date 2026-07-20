@@ -9,7 +9,7 @@ import { RankingRow } from "@/components/ds/RankingRow";
 import { AdmissionTableView } from "@/components/result/AdmissionTableView";
 import { ResultActions } from "@/components/result/ResultActions";
 import { computeResult } from "@/lib/scoring";
-import { loadAnswers } from "@/lib/storage";
+import { hasGrant, loadAnswers } from "@/lib/storage";
 import type { TrackMeta } from "@/lib/tracks";
 import { useHydrated } from "@/lib/useHydrated";
 import type { TrackData } from "@/lib/types";
@@ -23,7 +23,8 @@ export function ResultClient({ track, meta }: { track: TrackData; meta: TrackMet
     const answers = loadAnswers(track.id);
     const complete =
       answers && track.questions.every((q) => answers[q.id] !== undefined);
-    if (!complete) return "incomplete" as const;
+    // 결과는 토큰 차감이 완료된 세션(grant)에서만 표시
+    if (!complete || !hasGrant(track.id)) return "incomplete" as const;
     return computeResult(track, answers);
   }, [hydrated, track]);
 
@@ -227,6 +228,16 @@ export function ResultClient({ track, meta }: { track: TrackData; meta: TrackMet
         >
           본 추천은 우주설 강사의 논술 기준표를 바탕으로 한 참고용 결과입니다. 최종
           지원 전 반드시 각 대학 모집요강을 확인하세요.
+        </p>
+        <p
+          style={{
+            margin: "14px 0 0",
+            fontSize: "var(--text-xs)",
+            fontWeight: "var(--fw-bold)",
+            color: "var(--text-ghost)",
+          }}
+        >
+          신준섭 X 우주설 논술연구소
         </p>
       </footer>
     </>

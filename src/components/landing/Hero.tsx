@@ -1,5 +1,5 @@
+import { BrandLockup } from "@/components/BrandLockup";
 import { Button } from "@/components/ds/Button";
-import { Chip } from "@/components/ds/Chip";
 
 export function Hero() {
   return (
@@ -8,12 +8,12 @@ export function Hero() {
       style={{
         position: "relative",
         overflow: "hidden",
-        padding: "88px 24px 72px",
+        padding: "80px 24px 72px",
         textAlign: "center",
       }}
     >
       <div style={{ maxWidth: 720, margin: "0 auto" }}>
-        <Chip leadingIcon="🔭">우주설 수리논술 · 2027 논술 시즌</Chip>
+        <BrandLockup />
 
         <h1 style={{ margin: "32px 0 0", lineHeight: 1.05 }}>
           <span
@@ -49,8 +49,7 @@ export function Hero() {
             color: "rgba(255,255,255,.9)",
           }}
         >
-          나의 대학<span style={{ color: "var(--indigo-300)" }}>(Universe)</span>이
-          열리는 곳
+          논술 전형 추천 시스템
         </p>
 
         <p
@@ -64,6 +63,19 @@ export function Hero() {
         >
           설문 3분이면 충분해요. 답변 하나하나가 우주설의 기준표를 통과한 대학에
           투표되고, 가장 많은 표를 받은 대학이 나의 논술 1지망이 됩니다.
+        </p>
+
+        <p
+          style={{
+            margin: "14px auto 0",
+            maxWidth: 460,
+            fontSize: "var(--text-xs)",
+            lineHeight: "var(--leading-relaxed)",
+            color: "var(--text-faint)",
+          }}
+        >
+          🎟️ 우주설 수업 수강생에게 발급되는 <strong style={{ color: "var(--text-secondary)" }}>이용
+          토큰</strong>으로 이용할 수 있어요 · 토큰 1개당 2회
         </p>
 
         <div style={{ marginTop: 36 }}>

@@ -6,7 +6,14 @@ import { PageHeader } from "@/components/PageHeader";
 import { Button } from "@/components/ds/Button";
 import { OptionButton } from "@/components/ds/OptionButton";
 import { QuestionProgress } from "@/components/ds/QuestionProgress";
-import { loadAnswers, saveAnswers } from "@/lib/storage";
+import { TokenGate } from "@/components/survey/TokenGate";
+import {
+  clearAccessToken,
+  loadAccessToken,
+  loadAnswers,
+  saveAnswers,
+  saveGrant,
+} from "@/lib/storage";
 import type { TrackMeta } from "@/lib/tracks";
 import { useHydrated } from "@/lib/useHydrated";
 import type { Answers, TrackData } from "@/lib/types";
@@ -22,6 +29,17 @@ export function SurveyClient({ track, meta }: { track: TrackData; meta: TrackMet
   const router = useRouter();
   const hydrated = useHydrated();
 
+  /* ── 이용 토큰 게이트 ── */
+  const persistedToken = useMemo(
+    () => (hydrated ? loadAccessToken() : null),
+    [hydrated],
+  );
+  const [passedCode, setPassedCode] = useState<string | null>(null);
+  const [revoked, setRevoked] = useState(false);
+  const [gateNotice, setGateNotice] = useState<string | null>(null);
+  const token = passedCode ?? (revoked ? null : persistedToken);
+
+  /* ── 답변 상태 ── */
   const persisted = useMemo(
     () => (hydrated ? (loadAnswers(track.id) ?? {}) : {}),
     [hydrated, track.id],
@@ -34,6 +52,7 @@ export function SurveyClient({ track, meta }: { track: TrackData; meta: TrackMet
 
   const [direction, setDirection] = useState<"fwd" | "back">("fwd");
   const [finishing, setFinishing] = useState(false);
+  const [finishError, setFinishError] = useState<string | null>(null);
   const advanceTimer = useRef<number | null>(null);
 
   useEffect(
@@ -48,16 +67,41 @@ export function SurveyClient({ track, meta }: { track: TrackData; meta: TrackMet
   const selected = answers[question.id];
   const isLast = index === questions.length - 1;
 
-  const finish = (finalAnswers: Answers) => {
+  const revokeToken = (notice: string) => {
+    clearAccessToken();
+    setPassedCode(null);
+    setRevoked(true);
+    setGateNotice(notice);
+  };
+
+  const finish = async (finalAnswers: Answers) => {
+    if (!token || finishing) return;
     setFinishing(true);
-    // 익명 통계 저장 — 실패해도 결과 표시는 그대로 진행
-    fetch("/api/responses", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ track: track.id, answers: finalAnswers }),
-      keepalive: true,
-    }).catch(() => {});
-    router.push(`/survey/${track.id}/result`);
+    setFinishError(null);
+    try {
+      const res = await fetch("/api/responses", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ track: track.id, answers: finalAnswers, token }),
+      });
+      const data = await res.json().catch(() => ({}));
+      if (res.ok && data.ok) {
+        saveGrant(track.id);
+        router.push(`/survey/${track.id}/result`);
+        return;
+      }
+      if (data.reason === "exhausted") {
+        revokeToken("토큰 사용 횟수(2회)를 모두 사용했어요. 새 토큰이 있다면 입력해 주세요.");
+      } else if (data.reason === "invalid" || data.reason === "missing") {
+        revokeToken("입력했던 토큰이 더 이상 유효하지 않아요. 다시 확인해 주세요.");
+      } else {
+        setFinishError(data.error ?? "결과 발급에 실패했어요. 잠시 후 다시 시도해 주세요.");
+      }
+    } catch {
+      setFinishError("네트워크 문제로 결과 발급에 실패했어요. 다시 시도해 주세요.");
+    } finally {
+      setFinishing(false);
+    }
   };
 
   const goNext = (nextAnswers: Answers) => {
@@ -76,7 +120,10 @@ export function SurveyClient({ track, meta }: { track: TrackData; meta: TrackMet
     setNavIndex(index);
     saveAnswers(track.id, next);
     if (advanceTimer.current !== null) window.clearTimeout(advanceTimer.current);
-    advanceTimer.current = window.setTimeout(() => goNext(next), ADVANCE_DELAY_MS);
+    // 마지막 문항은 자동 제출하지 않음 — 결과 발급(토큰 차감)은 버튼으로 명시적으로
+    if (!isLast) {
+      advanceTimer.current = window.setTimeout(() => goNext(next), ADVANCE_DELAY_MS);
+    }
   };
 
   const goBack = () => {
@@ -85,6 +132,33 @@ export function SurveyClient({ track, meta }: { track: TrackData; meta: TrackMet
     setDirection("back");
     setNavIndex(index - 1);
   };
+
+  /* 토큰 없음 → 게이트 표시 */
+  if (hydrated && !token) {
+    return (
+      <main
+        style={{
+          margin: "0 auto",
+          display: "flex",
+          width: "100%",
+          maxWidth: "var(--container-survey)",
+          flex: 1,
+          flexDirection: "column",
+          padding: "32px 24px",
+        }}
+      >
+        <PageHeader meta={meta} />
+        <TokenGate
+          meta={meta}
+          notice={gateNotice}
+          onPass={(code) => {
+            setPassedCode(code);
+            setGateNotice(null);
+          }}
+        />
+      </main>
+    );
+  }
 
   return (
     <main
@@ -143,6 +217,21 @@ export function SurveyClient({ track, meta }: { track: TrackData; meta: TrackMet
           ))}
         </ul>
       </div>
+
+      {finishError && (
+        <p
+          role="alert"
+          style={{
+            margin: "20px 0 0",
+            fontSize: "var(--text-xs)",
+            lineHeight: "var(--leading-relaxed)",
+            color: "var(--danger)",
+            textAlign: "center",
+          }}
+        >
+          {finishError}
+        </p>
+      )}
 
       <div
         style={{

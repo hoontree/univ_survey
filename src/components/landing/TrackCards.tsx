@@ -15,7 +15,7 @@ export function TrackCards() {
     >
       <SectionHeading
         title="어느 우주로 떠날까요?"
-        subtitle="목표 계열을 선택하면 바로 설문이 시작돼요."
+        subtitle="목표 계열을 선택하고 이용 토큰을 입력하면 설문이 시작돼요."
       />
       <div
         style={{

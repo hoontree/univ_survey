@@ -3,7 +3,7 @@
 import { useRouter } from "next/navigation";
 import { useState } from "react";
 import { Button } from "@/components/ds/Button";
-import { clearAnswers } from "@/lib/storage";
+import { clearAnswers, clearGrant } from "@/lib/storage";
 import type { TrackId } from "@/lib/types";
 
 export function ResultActions({ trackId }: { trackId: TrackId }) {
@@ -12,6 +12,7 @@ export function ResultActions({ trackId }: { trackId: TrackId }) {
 
   const retry = () => {
     clearAnswers(trackId);
+    clearGrant(trackId); // 다음 결과 발급은 새로 1회 차감
     router.push(`/survey/${trackId}`);
   };
 
