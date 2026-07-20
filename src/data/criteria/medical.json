@@ -1,0 +1,880 @@
+{
+  "id": "medical",
+  "name": "의대",
+  "universities": [
+    "가톨릭 의대",
+    "성균관 의대",
+    "경희대 의대",
+    "한양대 의대",
+    "중앙대 의대",
+    "이화여대 의대",
+    "가천대 의대",
+    "아주대 의대",
+    "인하대 의대",
+    "경북대 의대",
+    "부산대 의대"
+  ],
+  "questions": [
+    {
+      "id": "q1",
+      "text": "확률과 통계 23-30번 중 몇 개 맞추는 수준?",
+      "options": [
+        {
+          "value": 1,
+          "label": "다 맞춘다."
+        },
+        {
+          "value": 2,
+          "label": "하나 틀림"
+        },
+        {
+          "value": 3,
+          "label": "2개 틀림"
+        },
+        {
+          "value": 4,
+          "label": "4점빼고 다 맞음"
+        },
+        {
+          "value": 5,
+          "label": "노베이스"
+        }
+      ],
+      "rules": {
+        "가톨릭 의대": {
+          "threshold": 2,
+          "mode": "lte"
+        },
+        "성균관 의대": {
+          "threshold": 5,
+          "mode": "lte"
+        },
+        "경희대 의대": {
+          "threshold": 2,
+          "mode": "lte"
+        },
+        "한양대 의대": {
+          "threshold": 2,
+          "mode": "lte"
+        },
+        "중앙대 의대": {
+          "threshold": 2,
+          "mode": "lte"
+        },
+        "이화여대 의대": {
+          "threshold": 5,
+          "mode": "lte"
+        },
+        "가천대 의대": {
+          "threshold": 5,
+          "mode": "lte"
+        },
+        "아주대 의대": {
+          "threshold": 5,
+          "mode": "lte"
+        },
+        "인하대 의대": {
+          "threshold": 5,
+          "mode": "lte"
+        },
+        "경북대 의대": {
+          "threshold": 5,
+          "mode": "lte"
+        },
+        "부산대 의대": {
+          "threshold": 5,
+          "mode": "lte"
+        }
+      }
+    },
+    {
+      "id": "q2",
+      "text": "기하 23-30번 중 몇 개 맞추는 수준?",
+      "options": [
+        {
+          "value": 1,
+          "label": "다 맞춘다."
+        },
+        {
+          "value": 2,
+          "label": "하나 틀림"
+        },
+        {
+          "value": 3,
+          "label": "2개 틀림"
+        },
+        {
+          "value": 4,
+          "label": "4점빼고 다 맞음"
+        },
+        {
+          "value": 5,
+          "label": "노베이스"
+        }
+      ],
+      "rules": {
+        "가톨릭 의대": {
+          "threshold": 5,
+          "mode": "lte"
+        },
+        "성균관 의대": {
+          "threshold": 5,
+          "mode": "lte"
+        },
+        "경희대 의대": {
+          "threshold": 2,
+          "mode": "lte"
+        },
+        "한양대 의대": {
+          "threshold": 2,
+          "mode": "lte"
+        },
+        "중앙대 의대": {
+          "threshold": 1,
+          "mode": "lte"
+        },
+        "이화여대 의대": {
+          "threshold": 3,
+          "mode": "lte"
+        },
+        "가천대 의대": {
+          "threshold": 5,
+          "mode": "lte"
+        },
+        "아주대 의대": {
+          "threshold": 5,
+          "mode": "lte"
+        },
+        "인하대 의대": {
+          "threshold": 5,
+          "mode": "lte"
+        },
+        "경북대 의대": {
+          "threshold": 5,
+          "mode": "lte"
+        },
+        "부산대 의대": {
+          "threshold": 2,
+          "mode": "lte"
+        }
+      }
+    },
+    {
+      "id": "q3",
+      "text": "수능수학 실력",
+      "options": [
+        {
+          "value": 1,
+          "label": "100점 자주 나옴"
+        },
+        {
+          "value": 2,
+          "label": "96점 이상"
+        },
+        {
+          "value": 3,
+          "label": "92점 이상"
+        },
+        {
+          "value": 4,
+          "label": "88점 이상"
+        }
+      ],
+      "rules": {
+        "가톨릭 의대": {
+          "threshold": 2,
+          "mode": "lte"
+        },
+        "성균관 의대": {
+          "threshold": 1,
+          "mode": "lte"
+        },
+        "경희대 의대": {
+          "threshold": 3,
+          "mode": "lte"
+        },
+        "한양대 의대": {
+          "threshold": 3,
+          "mode": "lte"
+        },
+        "중앙대 의대": {
+          "threshold": 3,
+          "mode": "lte"
+        },
+        "이화여대 의대": {
+          "threshold": 3,
+          "mode": "lte"
+        },
+        "가천대 의대": {
+          "threshold": 2,
+          "mode": "lte"
+        },
+        "아주대 의대": {
+          "threshold": 4,
+          "mode": "lte"
+        },
+        "인하대 의대": {
+          "threshold": 3,
+          "mode": "lte"
+        },
+        "경북대 의대": {
+          "threshold": 3,
+          "mode": "lte"
+        },
+        "부산대 의대": {
+          "threshold": 3,
+          "mode": "lte"
+        }
+      }
+    },
+    {
+      "id": "q4",
+      "text": "풀이가 길어지면 계산실수가 나옵니까?",
+      "options": [
+        {
+          "value": 1,
+          "label": "계산실수 아예 없는편"
+        },
+        {
+          "value": 2,
+          "label": "계산실수 거의 없음"
+        },
+        {
+          "value": 3,
+          "label": "계산 실수 가끔함"
+        },
+        {
+          "value": 4,
+          "label": "계산 실수 잦음"
+        },
+        {
+          "value": 5,
+          "label": "무조건 나옴"
+        }
+      ],
+      "rules": {
+        "가톨릭 의대": {
+          "threshold": 2,
+          "mode": "lte"
+        },
+        "성균관 의대": {
+          "threshold": 1,
+          "mode": "lte"
+        },
+        "경희대 의대": {
+          "threshold": 2,
+          "mode": "lte"
+        },
+        "한양대 의대": {
+          "threshold": 2,
+          "mode": "lte"
+        },
+        "중앙대 의대": {
+          "threshold": 2,
+          "mode": "lte"
+        },
+        "이화여대 의대": {
+          "threshold": 2,
+          "mode": "lte"
+        },
+        "가천대 의대": {
+          "threshold": 1,
+          "mode": "lte"
+        },
+        "아주대 의대": {
+          "threshold": 3,
+          "mode": "lte"
+        },
+        "인하대 의대": {
+          "threshold": 2,
+          "mode": "lte"
+        },
+        "경북대 의대": {
+          "threshold": 2,
+          "mode": "lte"
+        },
+        "부산대 의대": {
+          "threshold": 2,
+          "mode": "lte"
+        }
+      }
+    },
+    {
+      "id": "q5",
+      "text": "문제를 푸는 속도가 빠릅니까?",
+      "options": [
+        {
+          "value": 1,
+          "label": "빠름"
+        },
+        {
+          "value": 2,
+          "label": "빠른 편"
+        },
+        {
+          "value": 3,
+          "label": "보통"
+        },
+        {
+          "value": 4,
+          "label": "느린편"
+        }
+      ],
+      "rules": {
+        "가톨릭 의대": {
+          "threshold": 1,
+          "mode": "lte"
+        },
+        "성균관 의대": {
+          "threshold": 1,
+          "mode": "lte"
+        },
+        "경희대 의대": {
+          "threshold": 3,
+          "mode": "lte"
+        },
+        "한양대 의대": {
+          "threshold": 2,
+          "mode": "lte"
+        },
+        "중앙대 의대": {
+          "threshold": 2,
+          "mode": "lte"
+        },
+        "이화여대 의대": {
+          "threshold": 2,
+          "mode": "lte"
+        },
+        "가천대 의대": {
+          "threshold": 1,
+          "mode": "lte"
+        },
+        "아주대 의대": {
+          "threshold": 3,
+          "mode": "lte"
+        },
+        "인하대 의대": {
+          "threshold": 2,
+          "mode": "lte"
+        },
+        "경북대 의대": {
+          "threshold": 1,
+          "mode": "lte"
+        },
+        "부산대 의대": {
+          "threshold": 2,
+          "mode": "lte"
+        }
+      }
+    },
+    {
+      "id": "q6",
+      "text": "수능최저",
+      "options": [
+        {
+          "value": 1,
+          "label": "4합 5까지 가능"
+        },
+        {
+          "value": 2,
+          "label": "3합 3까지 가능"
+        },
+        {
+          "value": 3,
+          "label": "3합 4까지 가능"
+        }
+      ],
+      "rules": {
+        "가톨릭 의대": {
+          "threshold": 3,
+          "mode": "lte"
+        },
+        "성균관 의대": {
+          "threshold": 1,
+          "mode": "lte"
+        },
+        "경희대 의대": {
+          "threshold": 3,
+          "mode": "lte"
+        },
+        "한양대 의대": {
+          "threshold": 3,
+          "mode": "lte"
+        },
+        "중앙대 의대": {
+          "threshold": 1,
+          "mode": "lte"
+        },
+        "이화여대 의대": {
+          "threshold": 1,
+          "mode": "lte"
+        },
+        "가천대 의대": {
+          "threshold": 2,
+          "mode": "lte"
+        },
+        "아주대 의대": {
+          "threshold": 2,
+          "mode": "lte"
+        },
+        "인하대 의대": {
+          "threshold": 2,
+          "mode": "lte"
+        },
+        "경북대 의대": {
+          "threshold": 3,
+          "mode": "lte"
+        },
+        "부산대 의대": {
+          "threshold": 3,
+          "mode": "lte"
+        }
+      }
+    },
+    {
+      "id": "q7",
+      "text": "수학적 재능이 있습니까?",
+      "options": [
+        {
+          "value": 1,
+          "label": "재능있음"
+        },
+        {
+          "value": 2,
+          "label": "재능이 있는 편임"
+        },
+        {
+          "value": 3,
+          "label": "보통"
+        },
+        {
+          "value": 4,
+          "label": "재능이 없는 편입"
+        }
+      ],
+      "rules": {
+        "가톨릭 의대": {
+          "threshold": 1,
+          "mode": "lte"
+        },
+        "성균관 의대": {
+          "threshold": 1,
+          "mode": "lte"
+        },
+        "경희대 의대": {
+          "threshold": 2,
+          "mode": "lte"
+        },
+        "한양대 의대": {
+          "threshold": 1,
+          "mode": "lte"
+        },
+        "중앙대 의대": {
+          "threshold": 2,
+          "mode": "lte"
+        },
+        "이화여대 의대": {
+          "threshold": 2,
+          "mode": "lte"
+        },
+        "가천대 의대": {
+          "threshold": 1,
+          "mode": "lte"
+        },
+        "아주대 의대": {
+          "threshold": 3,
+          "mode": "lte"
+        },
+        "인하대 의대": {
+          "threshold": 2,
+          "mode": "lte"
+        },
+        "경북대 의대": {
+          "threshold": 2,
+          "mode": "lte"
+        },
+        "부산대 의대": {
+          "threshold": 2,
+          "mode": "lte"
+        }
+      }
+    },
+    {
+      "id": "q8",
+      "text": "도형 선호도",
+      "options": [
+        {
+          "value": 1,
+          "label": "도형문제에 꽤 강함"
+        },
+        {
+          "value": 2,
+          "label": "도형문제에 강한 편임"
+        },
+        {
+          "value": 3,
+          "label": "도형문제에 약한 편임"
+        },
+        {
+          "value": 4,
+          "label": "도형문제에 많이 약함"
+        }
+      ],
+      "rules": {
+        "가톨릭 의대": {
+          "threshold": 3,
+          "mode": "lte"
+        },
+        "성균관 의대": {
+          "threshold": 3,
+          "mode": "lte"
+        },
+        "경희대 의대": {
+          "threshold": 2,
+          "mode": "lte"
+        },
+        "한양대 의대": {
+          "threshold": 2,
+          "mode": "lte"
+        },
+        "중앙대 의대": {
+          "threshold": 1,
+          "mode": "lte"
+        },
+        "이화여대 의대": {
+          "threshold": 3,
+          "mode": "lte"
+        },
+        "가천대 의대": {
+          "threshold": 2,
+          "mode": "lte"
+        },
+        "아주대 의대": {
+          "threshold": 2,
+          "mode": "lte"
+        },
+        "인하대 의대": {
+          "threshold": 3,
+          "mode": "lte"
+        },
+        "경북대 의대": {
+          "threshold": 3,
+          "mode": "lte"
+        },
+        "부산대 의대": {
+          "threshold": 1,
+          "mode": "lte"
+        }
+      }
+    },
+    {
+      "id": "q9",
+      "text": "성별",
+      "options": [
+        {
+          "value": 1,
+          "label": "여학생"
+        },
+        {
+          "value": 2,
+          "label": "남학생"
+        }
+      ],
+      "rules": {
+        "가톨릭 의대": {
+          "threshold": 2,
+          "mode": "lte"
+        },
+        "성균관 의대": {
+          "threshold": 2,
+          "mode": "lte"
+        },
+        "경희대 의대": {
+          "threshold": 2,
+          "mode": "lte"
+        },
+        "한양대 의대": {
+          "threshold": 2,
+          "mode": "lte"
+        },
+        "중앙대 의대": {
+          "threshold": 2,
+          "mode": "lte"
+        },
+        "이화여대 의대": {
+          "threshold": 1,
+          "mode": "lte"
+        },
+        "가천대 의대": {
+          "threshold": 2,
+          "mode": "lte"
+        },
+        "아주대 의대": {
+          "threshold": 2,
+          "mode": "lte"
+        },
+        "인하대 의대": {
+          "threshold": 2,
+          "mode": "lte"
+        },
+        "경북대 의대": {
+          "threshold": 2,
+          "mode": "lte"
+        },
+        "부산대 의대": {
+          "threshold": 2,
+          "mode": "lte"
+        }
+      },
+      "hardFilter": true
+    },
+    {
+      "id": "q10",
+      "text": "수능 과학탐구 2과목 응시자 입니까?",
+      "options": [
+        {
+          "value": 1,
+          "label": "네"
+        },
+        {
+          "value": 2,
+          "label": "아니오"
+        }
+      ],
+      "rules": {
+        "가톨릭 의대": {
+          "threshold": 1,
+          "mode": "lte"
+        },
+        "성균관 의대": {
+          "threshold": 2,
+          "mode": "lte"
+        },
+        "경희대 의대": {
+          "threshold": 2,
+          "mode": "lte"
+        },
+        "한양대 의대": {
+          "threshold": 2,
+          "mode": "lte"
+        },
+        "중앙대 의대": {
+          "threshold": 2,
+          "mode": "lte"
+        },
+        "이화여대 의대": {
+          "threshold": 2,
+          "mode": "lte"
+        },
+        "가천대 의대": {
+          "threshold": 1,
+          "mode": "lte"
+        },
+        "아주대 의대": {
+          "threshold": 2,
+          "mode": "lte"
+        },
+        "인하대 의대": {
+          "threshold": 1,
+          "mode": "lte"
+        },
+        "경북대 의대": {
+          "threshold": 2,
+          "mode": "lte"
+        },
+        "부산대 의대": {
+          "threshold": 2,
+          "mode": "lte"
+        }
+      }
+    },
+    {
+      "id": "q11",
+      "text": "물리II or 화학II or 생명과학 II 를 충실히 학습했습니까?",
+      "options": [
+        {
+          "value": 1,
+          "label": "과학논술 응시 가능"
+        },
+        {
+          "value": 2,
+          "label": "과학논술 응시 불가능"
+        }
+      ],
+      "rules": {
+        "가톨릭 의대": {
+          "threshold": 2,
+          "mode": "lte"
+        },
+        "성균관 의대": {
+          "threshold": 2,
+          "mode": "lte"
+        },
+        "경희대 의대": {
+          "threshold": 1,
+          "mode": "lte"
+        },
+        "한양대 의대": {
+          "threshold": 2,
+          "mode": "lte"
+        },
+        "중앙대 의대": {
+          "threshold": 2,
+          "mode": "lte"
+        },
+        "이화여대 의대": {
+          "threshold": 2,
+          "mode": "lte"
+        },
+        "가천대 의대": {
+          "threshold": 2,
+          "mode": "lte"
+        },
+        "아주대 의대": {
+          "threshold": 1,
+          "mode": "lte"
+        },
+        "인하대 의대": {
+          "threshold": 2,
+          "mode": "lte"
+        },
+        "경북대 의대": {
+          "threshold": 1,
+          "mode": "lte"
+        },
+        "부산대 의대": {
+          "threshold": 2,
+          "mode": "lte"
+        }
+      }
+    },
+    {
+      "id": "q12",
+      "text": "생명과학 I /II 내용을 충실히 학습했습니까?",
+      "options": [
+        {
+          "value": 1,
+          "label": "생명과학 논술 응시 가능"
+        },
+        {
+          "value": 2,
+          "label": "생명과학 논술 응시 불가능"
+        }
+      ],
+      "rules": {
+        "가톨릭 의대": {
+          "threshold": 2,
+          "mode": "lte"
+        },
+        "성균관 의대": {
+          "threshold": 2,
+          "mode": "lte"
+        },
+        "경희대 의대": {
+          "threshold": 2,
+          "mode": "lte"
+        },
+        "한양대 의대": {
+          "threshold": 2,
+          "mode": "lte"
+        },
+        "중앙대 의대": {
+          "threshold": 2,
+          "mode": "lte"
+        },
+        "이화여대 의대": {
+          "threshold": 2,
+          "mode": "lte"
+        },
+        "가천대 의대": {
+          "threshold": 2,
+          "mode": "lte"
+        },
+        "아주대 의대": {
+          "threshold": 1,
+          "mode": "lte"
+        },
+        "인하대 의대": {
+          "threshold": 2,
+          "mode": "lte"
+        },
+        "경북대 의대": {
+          "threshold": 1,
+          "mode": "lte"
+        },
+        "부산대 의대": {
+          "threshold": 2,
+          "mode": "lte"
+        }
+      }
+    },
+    {
+      "id": "q13",
+      "text": "쉬운논술과 어려운논술 중 선호하는 것",
+      "options": [
+        {
+          "value": 1,
+          "label": "컷 90점 이상 선호"
+        },
+        {
+          "value": 2,
+          "label": "컷 80점 이상 선호"
+        },
+        {
+          "value": 3,
+          "label": "컷 65점 이상 선호"
+        },
+        {
+          "value": 4,
+          "label": "컷 60점 미만에 어려운 논술 선호"
+        }
+      ],
+      "rules": {
+        "가톨릭 의대": {
+          "threshold": 2,
+          "mode": "eq"
+        },
+        "성균관 의대": {
+          "threshold": 2,
+          "mode": "eq"
+        },
+        "경희대 의대": {
+          "threshold": 1,
+          "mode": "eq"
+        },
+        "한양대 의대": {
+          "threshold": 2,
+          "mode": "eq"
+        },
+        "중앙대 의대": {
+          "threshold": 1,
+          "mode": "eq"
+        },
+        "이화여대 의대": {
+          "threshold": 1,
+          "mode": "eq"
+        },
+        "가천대 의대": {
+          "threshold": 2,
+          "mode": "eq"
+        },
+        "아주대 의대": {
+          "threshold": 1,
+          "mode": "eq"
+        },
+        "인하대 의대": {
+          "threshold": 2,
+          "mode": "eq"
+        },
+        "경북대 의대": {
+          "threshold": 3,
+          "mode": "eq"
+        },
+        "부산대 의대": {
+          "threshold": 2,
+          "mode": "eq"
+        }
+      }
+    }
+  ]
+}
