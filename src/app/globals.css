@@ -1,25 +1,174 @@
 @import "tailwindcss";
 
-/* 기본 코스믹 다크 테마 — 디자인 시안 반영 시 이 변수들만 교체 */
+/* ═══════════════════════════════════════════════════════════════════
+   유니버설 UNIVER設 — design system
+   claude.ai/design 프로젝트 8fd99337 의 tokens/* 와 컴포넌트 CSS를 이식.
+   폰트 페이스는 next/font/local(layout.tsx)이 생성하고 여기서는 변수만 참조.
+   ═══════════════════════════════════════════════════════════════════ */
+
 :root {
-  --background: #070b18;
-  --foreground: #eef1f8;
+  /* ── Space — neutral spine ── */
+  --space-950: #04060f;
+  --space-900: #070b18; /* app background */
+  --space-850: #0a0f1e;
+  --space-800: #0d1220;
+  --space-700: #141a2b;
+  --star-050: #eef1f8;
+  --pure-white: #ffffff;
+
+  /* ── Nebula — brand accent ramp ── */
+  --indigo-200: #c7d2fe;
+  --indigo-300: #a5b4fc;
+  --indigo-400: #818cf8;
+  --indigo-500: #6366f1;
+  --indigo-600: #4f46e5;
+  --violet-300: #c4b5fd;
+  --violet-500: #8b5cf6;
+  --violet-600: #7c3aed;
+  --fuchsia-300: #f0abfc;
+  --fuchsia-500: #d946ef;
+
+  /* ── Track accents ── */
+  --rose-400: #fb7185;
+  --rose-500: #f43f5e;
+  --orange-500: #f97316;
+  --emerald-400: #34d399;
+  --emerald-500: #10b981;
+  --teal-500: #14b8a6;
+
+  /* ── White-alpha scale ── */
+  --w-03: rgba(255, 255, 255, 0.03);
+  --w-04: rgba(255, 255, 255, 0.04);
+  --w-06: rgba(255, 255, 255, 0.06);
+  --w-08: rgba(255, 255, 255, 0.08);
+  --w-10: rgba(255, 255, 255, 0.1);
+  --w-15: rgba(255, 255, 255, 0.15);
+  --w-25: rgba(255, 255, 255, 0.25);
+  --w-40: rgba(255, 255, 255, 0.4);
+
+  /* ── Semantic aliases ── */
+  --bg-app: var(--space-900);
+  --surface-card: var(--w-03);
+  --surface-card-hover: var(--w-08);
+  --surface-raised: var(--w-06);
+  --surface-accent-soft: rgba(99, 102, 241, 0.07);
+  --surface-selected: rgba(99, 102, 241, 0.2);
+
+  --border-subtle: var(--w-10);
+  --border-strong: var(--w-15);
+  --border-hover: var(--w-25);
+  --border-accent: rgba(129, 140, 248, 0.4);
+
+  --text-strong: var(--pure-white);
+  --text-primary: var(--star-050);
+  --text-secondary: rgba(255, 255, 255, 0.7);
+  --text-muted: rgba(255, 255, 255, 0.55);
+  --text-faint: rgba(255, 255, 255, 0.4);
+  --text-ghost: rgba(255, 255, 255, 0.3);
+  --text-accent: var(--indigo-300);
+  --text-on-accent: var(--space-950);
+
+  --accent: var(--indigo-500);
+  --accent-hover: var(--indigo-400);
+
+  --success: var(--emerald-400);
+  --danger: var(--rose-400);
+  --danger-soft: rgba(244, 63, 94, 0.06);
+  --danger-border: rgba(251, 113, 133, 0.2);
+
+  /* ── Gradients ── */
+  --gradient-brand: linear-gradient(90deg, var(--indigo-500), var(--violet-500));
+  --gradient-brand-text: linear-gradient(90deg, #a5b4fc, #c4b5fd, #f0abfc);
+  --gradient-medical: linear-gradient(90deg, var(--rose-500), var(--orange-500));
+  --gradient-pharmacy: linear-gradient(90deg, var(--emerald-500), var(--teal-500));
+  --gradient-nonmedical: linear-gradient(90deg, var(--indigo-500), var(--violet-500));
+
+  /* ── Typography ── */
+  --font-display: var(--font-one-mobile-title), var(--font-one-mobile),
+    var(--font-noto-sans-kr), sans-serif;
+  --font-sans: var(--font-one-mobile), var(--font-noto-sans-kr),
+    "Apple SD Gothic Neo", "Malgun Gothic", system-ui, sans-serif;
+  --font-dense: var(--font-noto-sans-kr), var(--font-one-mobile), sans-serif;
+
+  --fw-light: 300;
+  --fw-regular: 400;
+  --fw-bold: 700;
+
+  --text-display: 4.5rem;
+  --text-h1: 3rem;
+  --text-h2: 1.875rem;
+  --text-h3: 1.25rem;
+  --text-lg: 1.125rem;
+  --text-body: 1rem;
+  --text-sm: 0.875rem;
+  --text-xs: 0.75rem;
+
+  --leading-tight: 1.1;
+  --leading-snug: 1.3;
+  --leading-normal: 1.5;
+  --leading-relaxed: 1.65;
+
+  --tracking-wordmark: 0.35em;
+  --tracking-eyebrow: 0.25em;
+  --tracking-wide: 0.05em;
+
+  /* ── Radii ── */
+  --radius-sm: 0.5rem;
+  --radius-md: 0.75rem;
+  --radius-lg: 1rem;
+  --radius-xl: 1.5rem;
+  --radius-full: 9999px;
+
+  /* ── Elevation & glow ── */
+  --shadow-sm: 0 1px 2px rgba(0, 0, 0, 0.4);
+  --shadow-md: 0 8px 20px -6px rgba(0, 0, 0, 0.5);
+  --shadow-lg: 0 18px 40px -12px rgba(0, 0, 0, 0.6);
+  --glow-accent: 0 12px 30px -8px rgba(99, 102, 241, 0.45);
+  --glow-accent-strong: 0 14px 36px -6px rgba(99, 102, 241, 0.55);
+  --glow-accent-soft: 0 10px 24px -10px rgba(99, 102, 241, 0.25);
+  --glow-selected: 0 10px 26px -10px rgba(99, 102, 241, 0.35);
+  --glow-medical: 0 12px 30px -8px rgba(244, 63, 94, 0.4);
+  --glow-pharmacy: 0 12px 30px -8px rgba(16, 185, 129, 0.4);
+
+  /* ── Motion ── */
+  --ease-out: cubic-bezier(0, 0, 0.2, 1);
+  --ease-in-out: cubic-bezier(0.4, 0, 0.2, 1);
+  --dur-instant: 0.15s;
+  --dur-fast: 0.22s;
+  --dur-base: 0.3s;
+  --dur-slow: 0.8s;
+  --lift-hover: -1px;
+  --scale-hover: 1.02;
+  --scale-press: 0.98;
+
+  /* ── Layout ── */
+  --container-survey: 36rem;
+  --container-result: 42rem;
+  --container-page: 56rem;
+  --gutter: 1.5rem;
 }
 
+/* Tailwind가 토큰을 유틸리티로 노출하도록 매핑 */
 @theme inline {
-  --color-background: var(--background);
-  --color-foreground: var(--foreground);
-  --font-sans: var(--font-noto-sans-kr);
+  --color-background: var(--bg-app);
+  --color-foreground: var(--text-primary);
+  --font-sans: var(--font-one-mobile), var(--font-noto-sans-kr), sans-serif;
+  --font-display: var(--font-one-mobile-title), var(--font-one-mobile), sans-serif;
+  --font-dense: var(--font-noto-sans-kr), sans-serif;
 }
 
 body {
-  background: var(--background);
-  color: var(--foreground);
-  font-family: var(--font-noto-sans-kr), "Apple SD Gothic Neo", "Malgun Gothic", sans-serif;
+  background: var(--bg-app);
+  color: var(--text-primary);
+  font-family: var(--font-sans);
+  /* 한국어 줄바꿈: 어절 단위로 끊고, 너무 긴 단어만 글자 단위 폴백 */
+  word-break: keep-all;
+  overflow-wrap: break-word;
 }
 
-/* 은은한 별밤 배경 (히어로/결과 상단용) */
-.starfield {
+/* ═══ Signature effects ═══════════════════════════════════════════ */
+
+.univ-starfield {
   background-image:
     radial-gradient(1px 1px at 12% 18%, rgba(255, 255, 255, 0.7) 50%, transparent 51%),
     radial-gradient(1px 1px at 32% 62%, rgba(255, 255, 255, 0.45) 50%, transparent 51%),
@@ -31,40 +180,210 @@ body {
     radial-gradient(ellipse at 50% -20%, rgba(99, 102, 241, 0.28), transparent 60%);
 }
 
-/* 설문 문항 전환 애니메이션 */
-@keyframes question-in {
-  from {
-    opacity: 0;
-    transform: translateX(24px);
-  }
-  to {
-    opacity: 1;
-    transform: translateX(0);
-  }
-}
-@keyframes question-in-back {
-  from {
-    opacity: 0;
-    transform: translateX(-24px);
-  }
-  to {
-    opacity: 1;
-    transform: translateX(0);
-  }
-}
-.question-enter {
-  animation: question-in 0.25s ease-out;
-}
-.question-enter-back {
-  animation: question-in-back 0.25s ease-out;
+.univ-nebula {
+  background-image: radial-gradient(
+    ellipse at 50% -20%,
+    rgba(99, 102, 241, 0.28),
+    transparent 60%
+  );
 }
 
-/* 결과 득표 바 채우기 */
-@keyframes bar-fill {
-  from {
-    width: 0;
-  }
+.univ-gradient-text {
+  background: var(--gradient-brand-text);
+  -webkit-background-clip: text;
+  background-clip: text;
+  color: transparent;
 }
-.bar-fill {
-  animation: bar-fill 0.8s ease-out;
+.univ-gradient-text--medical {
+  background: var(--gradient-medical);
+  -webkit-background-clip: text;
+  background-clip: text;
+  color: transparent;
 }
+.univ-gradient-text--pharmacy {
+  background: var(--gradient-pharmacy);
+  -webkit-background-clip: text;
+  background-clip: text;
+  color: transparent;
+}
+.univ-gradient-text--nonmedical {
+  background: var(--gradient-nonmedical);
+  -webkit-background-clip: text;
+  background-clip: text;
+  color: transparent;
+}
+
+/* 흰 배경 JPG 엠블럼을 다크 표면에 녹아웃 — invert 후 검정 배경을 screen으로 제거 */
+.univ-knockout {
+  filter: invert(1);
+  mix-blend-mode: screen;
+}
+
+@keyframes univ-question-in {
+  from { opacity: 0; transform: translateX(24px); }
+  to { opacity: 1; transform: translateX(0); }
+}
+@keyframes univ-question-in-back {
+  from { opacity: 0; transform: translateX(-24px); }
+  to { opacity: 1; transform: translateX(0); }
+}
+.univ-question-enter { animation: univ-question-in var(--dur-base) var(--ease-out); }
+.univ-question-enter-back { animation: univ-question-in-back var(--dur-base) var(--ease-out); }
+
+@keyframes univ-bar-fill {
+  from { width: 0; }
+}
+.univ-bar-fill { animation: univ-bar-fill var(--dur-slow) var(--ease-out); }
+
+/* ═══ Components ══════════════════════════════════════════════════ */
+
+/* Button — pill CTA */
+.univ-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.5rem;
+  border-radius: var(--radius-full);
+  font-family: var(--font-sans);
+  font-weight: var(--fw-bold);
+  line-height: 1;
+  white-space: nowrap;
+  cursor: pointer;
+  border: 1px solid transparent;
+  text-decoration: none;
+  transition:
+    transform var(--dur-fast) var(--ease-out),
+    box-shadow var(--dur-fast) var(--ease-out),
+    background var(--dur-fast) var(--ease-out),
+    color var(--dur-fast) var(--ease-out),
+    border-color var(--dur-fast) var(--ease-out);
+}
+.univ-btn:hover { transform: scale(var(--scale-hover)); }
+.univ-btn:active { transform: scale(var(--scale-press)); }
+.univ-btn--primary { color: #fff; }
+.univ-btn--primary:hover { filter: brightness(1.06); }
+.univ-btn--secondary {
+  background: transparent;
+  border-color: var(--border-strong);
+  color: var(--text-secondary);
+}
+.univ-btn--secondary:hover { border-color: var(--border-hover); color: var(--text-strong); }
+.univ-btn--ghost { background: transparent; color: var(--text-muted); }
+.univ-btn--ghost:hover { color: var(--text-strong); background: var(--w-06); }
+.univ-btn:disabled,
+.univ-btn[aria-disabled="true"] {
+  opacity: 0.35;
+  cursor: not-allowed;
+  pointer-events: none;
+  transform: none;
+  box-shadow: none;
+}
+.univ-btn__ic { font-size: 1.05em; line-height: 1; }
+
+/* Card — base surface */
+.univ-card {
+  position: relative;
+  overflow: hidden;
+  font-family: var(--font-sans);
+  background: var(--surface-card);
+  border: 1px solid var(--border-subtle);
+  border-radius: var(--radius-lg);
+  transition:
+    transform var(--dur-fast) var(--ease-out),
+    border-color var(--dur-fast) var(--ease-out),
+    background var(--dur-fast) var(--ease-out);
+}
+.univ-card--accent {
+  background: var(--surface-accent-soft);
+  border-color: var(--border-accent);
+}
+.univ-card--xl { border-radius: var(--radius-xl); }
+.univ-card--interactive {
+  cursor: pointer;
+  text-decoration: none;
+  display: block;
+  color: inherit;
+}
+.univ-card--interactive:hover {
+  transform: translateY(var(--lift-hover));
+  border-color: var(--border-hover);
+  background: var(--surface-card-hover);
+}
+.univ-card__bar {
+  position: absolute;
+  inset-inline: 0;
+  top: 0;
+  height: 3px;
+}
+
+/* TrackCard — CTA arrow spreads on hover */
+.univ-trackcard__cta {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.35rem;
+  font-family: var(--font-sans);
+  font-size: var(--text-sm);
+  font-weight: var(--fw-bold);
+  margin-top: 1.25rem;
+  transition: gap var(--dur-fast) var(--ease-out);
+}
+.univ-trackcard:hover .univ-trackcard__cta { gap: 0.65rem; }
+
+/* OptionButton — survey answer */
+.univ-option {
+  display: flex;
+  width: 100%;
+  align-items: center;
+  gap: 1rem;
+  text-align: left;
+  border-radius: var(--radius-lg);
+  border: 1px solid var(--border-subtle);
+  background: var(--surface-card);
+  padding: 1rem 1.25rem;
+  cursor: pointer;
+  font-family: var(--font-sans);
+  transition:
+    transform var(--dur-instant) var(--ease-out),
+    border-color var(--dur-fast) var(--ease-out),
+    background var(--dur-fast) var(--ease-out);
+}
+.univ-option:hover { border-color: var(--border-hover); background: var(--surface-card-hover); }
+.univ-option:active { transform: scale(0.99); }
+.univ-option--selected {
+  border-color: var(--indigo-400);
+  background: var(--surface-selected);
+  box-shadow: var(--glow-selected);
+}
+.univ-option__num {
+  display: flex;
+  flex: 0 0 auto;
+  width: 2rem;
+  height: 2rem;
+  align-items: center;
+  justify-content: center;
+  border-radius: var(--radius-full);
+  font-family: var(--font-display);
+  font-size: var(--text-sm);
+  font-weight: var(--fw-bold);
+  background: var(--w-10);
+  color: var(--text-muted);
+}
+.univ-option--selected .univ-option__num {
+  background: var(--indigo-400);
+  color: var(--text-on-accent);
+}
+.univ-option__label {
+  font-size: var(--text-body);
+  font-weight: var(--fw-regular);
+  color: var(--text-primary);
+}
+
+/* RankingRow — details/summary disclosure */
+.univ-rank { overflow: hidden; }
+.univ-rank > summary { list-style: none; cursor: pointer; }
+.univ-rank > summary::-webkit-details-marker { display: none; }
+.univ-rank__caret { transition: transform var(--dur-fast) var(--ease-out); }
+.univ-rank[open] .univ-rank__caret { transform: rotate(180deg); }
+
+/* 표 — 밀집 한글 */
+.univ-table { font-family: var(--font-dense); }

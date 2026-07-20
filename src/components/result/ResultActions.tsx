@@ -1,8 +1,8 @@
 "use client";
 
-import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useState } from "react";
+import { Button } from "@/components/ds/Button";
 import { clearAnswers } from "@/lib/storage";
 import type { TrackId } from "@/lib/types";
 
@@ -26,27 +26,24 @@ export function ResultActions({ trackId }: { trackId: TrackId }) {
   };
 
   return (
-    <section className="mt-10 flex flex-wrap items-center justify-center gap-3">
-      <button
-        type="button"
-        onClick={retry}
-        className="rounded-full border border-white/15 px-5 py-2.5 text-sm font-bold text-white/70 transition hover:border-white/40 hover:text-white"
-      >
-        ↺ 다시하기
-      </button>
-      <Link
-        href="/#tracks"
-        className="rounded-full border border-white/15 px-5 py-2.5 text-sm font-bold text-white/70 transition hover:border-white/40 hover:text-white"
-      >
+    <section
+      style={{
+        marginTop: 40,
+        display: "flex",
+        flexWrap: "wrap",
+        justifyContent: "center",
+        gap: 12,
+      }}
+    >
+      <Button variant="secondary" leadingIcon="↺" onClick={retry}>
+        다시하기
+      </Button>
+      <Button variant="secondary" href="/#tracks">
         다른 계열 해보기
-      </Link>
-      <button
-        type="button"
-        onClick={copyLink}
-        className="rounded-full bg-gradient-to-r from-indigo-500 to-violet-500 px-5 py-2.5 text-sm font-bold text-white shadow-lg shadow-indigo-500/25 transition hover:scale-[1.02]"
-      >
-        {copied ? "복사 완료! ✓" : "친구에게 공유하기 🔗"}
-      </button>
+      </Button>
+      <Button track={trackId} trailingIcon="🔗" onClick={copyLink}>
+        {copied ? "복사 완료! ✓" : "친구에게 공유하기"}
+      </Button>
     </section>
   );
 }

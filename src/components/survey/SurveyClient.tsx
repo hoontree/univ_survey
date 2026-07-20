@@ -1,8 +1,11 @@
 "use client";
 
-import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useEffect, useMemo, useRef, useState } from "react";
+import { PageHeader } from "@/components/PageHeader";
+import { Button } from "@/components/ds/Button";
+import { OptionButton } from "@/components/ds/OptionButton";
+import { QuestionProgress } from "@/components/ds/QuestionProgress";
 import { loadAnswers, saveAnswers } from "@/lib/storage";
 import type { TrackMeta } from "@/lib/tracks";
 import { useHydrated } from "@/lib/useHydrated";
@@ -19,7 +22,6 @@ export function SurveyClient({ track, meta }: { track: TrackData; meta: TrackMet
   const router = useRouter();
   const hydrated = useHydrated();
 
-  // 저장된 답변(새로고침 복원) + 이번 세션에서 고른 답변
   const persisted = useMemo(
     () => (hydrated ? (loadAnswers(track.id) ?? {}) : {}),
     [hydrated, track.id],
@@ -27,7 +29,6 @@ export function SurveyClient({ track, meta }: { track: TrackData; meta: TrackMet
   const [overrides, setOverrides] = useState<Answers>({});
   const answers = useMemo(() => ({ ...persisted, ...overrides }), [persisted, overrides]);
 
-  // null이면 "첫 미응답 문항"을 자동 표시 (복원 시 이어하기)
   const [navIndex, setNavIndex] = useState<number | null>(null);
   const index = navIndex ?? firstUnansweredIndex(track, answers);
 
@@ -72,7 +73,7 @@ export function SurveyClient({ track, meta }: { track: TrackData; meta: TrackMet
     if (finishing) return;
     const next = { ...answers, [question.id]: value };
     setOverrides((prev) => ({ ...prev, [question.id]: value }));
-    setNavIndex(index); // 파생 인덱스가 즉시 넘어가지 않도록 현재 위치 고정
+    setNavIndex(index);
     saveAnswers(track.id, next);
     if (advanceTimer.current !== null) window.clearTimeout(advanceTimer.current);
     advanceTimer.current = window.setTimeout(() => goNext(next), ADVANCE_DELAY_MS);
@@ -86,93 +87,89 @@ export function SurveyClient({ track, meta }: { track: TrackData; meta: TrackMet
   };
 
   return (
-    <main className="mx-auto flex w-full max-w-xl flex-1 flex-col px-6 py-8">
-      <header className="flex items-center justify-between">
-        <Link
-          href="/"
-          className="text-sm font-bold text-white/50 transition hover:text-white"
-        >
-          ← 유니버설
-        </Link>
-        <span className="rounded-full border border-white/15 bg-white/5 px-3 py-1 text-xs font-bold text-white/70">
-          {meta.emoji} {meta.name}
-        </span>
-      </header>
+    <main
+      style={{
+        margin: "0 auto",
+        display: "flex",
+        width: "100%",
+        maxWidth: "var(--container-survey)",
+        flex: 1,
+        flexDirection: "column",
+        padding: "32px 24px",
+      }}
+    >
+      <PageHeader meta={meta} />
 
-      <div className="mt-8">
-        <div className="flex items-end justify-between text-xs font-bold text-white/50">
-          <span>
-            문항 <span className="text-base text-indigo-300">{index + 1}</span> /{" "}
-            {questions.length}
-          </span>
-          <span>{Math.round(((index + 1) / questions.length) * 100)}%</span>
-        </div>
-        <div className="mt-2 h-1.5 overflow-hidden rounded-full bg-white/10">
-          <div
-            className={`h-full rounded-full bg-gradient-to-r ${meta.accent} transition-all duration-300`}
-            style={{ width: `${((index + 1) / questions.length) * 100}%` }}
-          />
-        </div>
+      <div style={{ marginTop: 32 }}>
+        <QuestionProgress index={index + 1} total={questions.length} track={track.id} />
       </div>
 
       <div
         key={question.id}
-        className={direction === "fwd" ? "question-enter mt-10" : "question-enter-back mt-10"}
+        className={direction === "fwd" ? "univ-question-enter" : "univ-question-enter-back"}
+        style={{ marginTop: 40 }}
       >
-        <h1 className="text-xl font-extrabold leading-snug sm:text-2xl">
+        <h1
+          style={{
+            margin: 0,
+            fontFamily: "var(--font-display)",
+            fontSize: "var(--text-h3)",
+            fontWeight: "var(--fw-bold)",
+            lineHeight: "var(--leading-snug)",
+            color: "var(--text-strong)",
+          }}
+        >
           {question.text}
         </h1>
-        <ul className="mt-7 space-y-3">
-          {question.options.map((option) => {
-            const isSelected = selected === option.value;
-            return (
-              <li key={option.value}>
-                <button
-                  type="button"
-                  onClick={() => select(option.value)}
-                  className={`flex w-full items-center gap-4 rounded-2xl border px-5 py-4 text-left transition active:scale-[0.99] ${
-                    isSelected
-                      ? "border-indigo-400 bg-indigo-500/20 shadow-lg shadow-indigo-500/20"
-                      : "border-white/10 bg-white/[0.04] hover:border-white/30 hover:bg-white/[0.08]"
-                  }`}
-                >
-                  <span
-                    className={`flex size-8 shrink-0 items-center justify-center rounded-full text-sm font-black ${
-                      isSelected
-                        ? "bg-indigo-400 text-slate-950"
-                        : "bg-white/10 text-white/60"
-                    }`}
-                  >
-                    {option.value}
-                  </span>
-                  <span className="text-sm font-medium sm:text-base">{option.label}</span>
-                </button>
-              </li>
-            );
-          })}
+        <ul
+          style={{
+            listStyle: "none",
+            margin: "28px 0 0",
+            padding: 0,
+            display: "flex",
+            flexDirection: "column",
+            gap: 12,
+          }}
+        >
+          {question.options.map((option) => (
+            <li key={option.value}>
+              <OptionButton
+                value={option.value}
+                label={option.label}
+                selected={selected === option.value}
+                onClick={() => select(option.value)}
+              />
+            </li>
+          ))}
         </ul>
       </div>
 
-      <div className="mt-8 flex items-center justify-between pb-4">
-        <button
-          type="button"
-          onClick={goBack}
-          disabled={index === 0 || finishing}
-          className="rounded-full border border-white/15 px-5 py-2.5 text-sm font-bold text-white/70 transition enabled:hover:border-white/40 enabled:hover:text-white disabled:opacity-30"
-        >
+      <div
+        style={{
+          marginTop: 32,
+          paddingBottom: 16,
+          display: "flex",
+          alignItems: "center",
+          justifyContent: "space-between",
+          gap: 12,
+        }}
+      >
+        <Button variant="secondary" onClick={goBack} disabled={index === 0 || finishing}>
           ← 이전
-        </button>
+        </Button>
         {selected !== undefined ? (
-          <button
-            type="button"
+          <Button
+            track={track.id}
             onClick={() => goNext(answers)}
             disabled={finishing}
-            className="rounded-full bg-gradient-to-r from-indigo-500 to-violet-500 px-6 py-2.5 text-sm font-bold text-white shadow-lg shadow-indigo-500/25 transition hover:scale-[1.02] disabled:opacity-60"
+            trailingIcon={finishing ? undefined : isLast ? "🚀" : "→"}
           >
-            {finishing ? "결과 계산 중..." : isLast ? "결과 보기 🚀" : "다음 →"}
-          </button>
+            {finishing ? "결과 계산 중..." : isLast ? "결과 보기" : "다음"}
+          </Button>
         ) : (
-          <p className="text-xs text-white/40">답변을 고르면 자동으로 넘어가요</p>
+          <p style={{ margin: 0, fontSize: "var(--text-xs)", color: "var(--text-faint)" }}>
+            답변을 고르면 자동으로 넘어가요
+          </p>
         )}
       </div>
     </main>
