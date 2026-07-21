@@ -1,0 +1,2 @@
+# Firebase Hosting은 public 디렉터리가 필요하다. 정적 파일은 두지 않고,
+# 모든 요청을 firebase.json의 rewrite로 Cloud Run(universeol, asia-northeast3)에 넘긴다.

@@ -11,3 +11,9 @@ scripts
 !README.md
 .DS_Store
 npm-debug.log*
+
+# Firebase Hosting (컨테이너 이미지와 무관)
+firebase.json
+.firebaserc
+firebase-public
+.firebase

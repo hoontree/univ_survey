@@ -1,0 +1,13 @@
+{
+  "hosting": {
+    "site": "universeol",
+    "public": "firebase-public",
+    "ignore": ["firebase.json", "**/.*", "**/node_modules/**"],
+    "rewrites": [
+      {
+        "source": "**",
+        "run": { "serviceId": "universeol", "region": "asia-northeast3" }
+      }
+    ]
+  }
+}

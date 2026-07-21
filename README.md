@@ -80,13 +80,23 @@ claude.ai/design 프로젝트 **유니버설 UNIVER設 Design System**(`8fd99337
 | 항목 | 값 |
 |---|---|
 | 프로젝트 | `universeol` |
-| 서비스 URL | https://universeol-588223559887.asia-northeast3.run.app |
+| 커스텀 도메인 | `jwessay.com` → Firebase Hosting → Cloud Run 리라이트 |
+| Cloud Run URL | https://universeol-588223559887.asia-northeast3.run.app |
+| Firebase Hosting | https://universeol.web.app (Cloud Run 앞단 CDN+SSL) |
 | 런타임 서비스 계정 | `universeol-run@universeol.iam.gserviceaccount.com` (Firestore 읽기·쓰기 + 해당 시크릿만) |
 | 빌드 서비스 계정 | `universeol-build@universeol.iam.gserviceaccount.com` (배포·이미지 푸시·연결 토큰 읽기) |
 | 자동 배포 | Cloud Build 트리거 `build-trigger` — `main` 푸시 시 `cloudbuild.yaml` 실행 |
 | 관리자 접근 | `/admin` 아이디·비밀번호 로그인. 세션 서명 키는 Secret Manager `universeol-admin-token` → `ADMIN_TOKEN`으로 주입 |
 | 스케일 | `min-instances=0` (평소 0원, 첫 접속 약 1~3초), 최대 10 |
 | 예산 알림 | 월 20,000원 · 50% / 90% / 100% |
+
+### 커스텀 도메인 (jwessay.com)
+
+서울 리전은 Cloud Run 도메인 매핑을 지원하지 않아, **Firebase Hosting**을 앞단에 두고 모든 요청을 Cloud Run으로 리라이트한다(무료, `firebase.json` 참조). SSL·CDN은 Firebase가 자동 처리.
+
+- 설정 배포: `firebase deploy --only hosting --project universeol` (firebase login 필요)
+- Firebase Hosting은 서비스를 가리키므로 Cloud Run 새 리비전이 나와도 재배포 불필요 (한 번 설정하면 끝)
+- 커스텀 도메인은 Firebase Hosting API의 `customDomains`로 연결. 가비아 DNS에 A(`199.36.158.100`) + TXT(`hosting-site=universeol`) 추가
 
 ### 수동 배포
 

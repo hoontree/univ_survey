@@ -42,3 +42,7 @@ next-env.d.ts
 
 # 응답 DB (로컬 SQLite)
 /data/
+
+# Firebase
+.firebase/
+firebase-debug.log*
