@@ -32,6 +32,8 @@ const notoSansKr = Noto_Sans_KR({
 });
 
 export const metadata: Metadata = {
+  // 카톡·SNS 공유 미리보기 이미지가 절대 URL로 나가려면 필수
+  metadataBase: new URL("https://jwessay.com"),
   title: {
     default: "논술 전형 추천 시스템 | 유니버설",
     template: "%s | 유니버설",
@@ -44,6 +46,12 @@ export const metadata: Metadata = {
     type: "website",
     locale: "ko_KR",
     siteName: "유니버설",
+    // 이미지는 src/app/opengraph-image.png 파일 컨벤션이 자동 첨부
+  },
+  twitter: {
+    card: "summary_large_image",
+    title: "논술 전형 추천 시스템 — 유니버설",
+    description: "신준섭 X 우주설 논술연구소 · 설문 3분, 나의 논술 1지망 찾기",
   },
 };
 
