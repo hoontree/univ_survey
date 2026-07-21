@@ -25,6 +25,7 @@ npm test           # 채점 엔진 단위 테스트
 | `src/app/globals.css` | 디자인 토큰 + 시그니처 효과 + 컴포넌트 CSS |
 | `src/components/ds/` | 디자인 시스템 컴포넌트 11종 |
 | `scripts/build_fonts.py` | ONE Mobile 원본 → 서브셋 WOFF2 웹폰트 |
+| `scripts/build_og_image.py` | 카톡·SNS 공유 썸네일(`src/app/opengraph-image.png`) 생성 |
 
 ## 디자인 시스템
 
@@ -96,7 +97,8 @@ claude.ai/design 프로젝트 **유니버설 UNIVER設 Design System**(`8fd99337
 
 - 설정 배포: `firebase deploy --only hosting --project universeol` (firebase login 필요)
 - Firebase Hosting은 서비스를 가리키므로 Cloud Run 새 리비전이 나와도 재배포 불필요 (한 번 설정하면 끝)
-- 커스텀 도메인은 Firebase Hosting API의 `customDomains`로 연결. 가비아 DNS에 A(`199.36.158.100`) + TXT(`hosting-site=universeol`) 추가
+- 커스텀 도메인은 Firebase Hosting API의 `customDomains`로 연결. 가비아 DNS: apex는 A(`199.36.158.100`) + TXT(`hosting-site=universeol`), www는 CNAME(`universeol.web.app`)
+- **캐시 주의**: Next가 정적 페이지에 `s-maxage=1년`을 붙여 Firebase CDN이 오래 캐시한다. `next.config.ts`의 `headers()`가 문서 캐시를 `s-maxage=60`으로 낮춰 배포가 ~1분 내 반영되게 함. 그래도 즉시 반영이 필요하면 `firebase deploy --only hosting`으로 CDN 캐시를 무효화
 
 ### 수동 배포
 
