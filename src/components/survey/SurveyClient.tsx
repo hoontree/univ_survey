@@ -6,6 +6,7 @@ import { PageHeader } from "@/components/PageHeader";
 import { Button } from "@/components/ds/Button";
 import { OptionButton } from "@/components/ds/OptionButton";
 import { QuestionProgress } from "@/components/ds/QuestionProgress";
+import { SurveyCalculating } from "@/components/survey/SurveyCalculating";
 import { TokenGate } from "@/components/survey/TokenGate";
 import {
   clearAccessToken,
@@ -19,6 +20,21 @@ import { useHydrated } from "@/lib/useHydrated";
 import type { Answers, TrackData } from "@/lib/types";
 
 const ADVANCE_DELAY_MS = 220;
+
+/**
+ * 결과 계산 화면의 진행 바 타임라인. move(=바가 목표치까지 차오르는 시간) 뒤
+ * hold(=멈춰 있는 시간)를 둬서 내부 로직이 단계별로 도는 듯한 멈칫거림을 만든다.
+ * move + hold 합계는 4000ms.
+ */
+const CALC_STEPS = [
+  { to: 20, move: 300, hold: 250, label: "응답을 정리하고 있어요" },
+  { to: 44, move: 400, hold: 500, label: "강사 기준표와 대조하고 있어요" },
+  { to: 66, move: 350, hold: 600, label: "대학별 득표를 집계하고 있어요" },
+  { to: 87, move: 350, hold: 450, label: "추천 순위를 정렬하고 있어요" },
+  { to: 100, move: 400, hold: 400, label: "추천 대학을 확정했어요" },
+] as const;
+
+const wait = (ms: number) => new Promise<void>((resolve) => setTimeout(resolve, ms));
 
 function firstUnansweredIndex(track: TrackData, answers: Answers): number {
   const index = track.questions.findIndex((q) => answers[q.id] === undefined);
@@ -55,8 +71,17 @@ export function SurveyClient({ track, meta }: { track: TrackData; meta: TrackMet
   const [finishError, setFinishError] = useState<string | null>(null);
   const advanceTimer = useRef<number | null>(null);
 
+  /* ── 결과 계산 화면 진행 바 ── */
+  const [calc, setCalc] = useState<{ progress: number; moveMs: number; label: string }>({
+    progress: 0,
+    moveMs: CALC_STEPS[0].move,
+    label: CALC_STEPS[0].label,
+  });
+  const cancelled = useRef(false);
+
   useEffect(
     () => () => {
+      cancelled.current = true;
       if (advanceTimer.current !== null) window.clearTimeout(advanceTimer.current);
     },
     [],
@@ -78,13 +103,29 @@ export function SurveyClient({ track, meta }: { track: TrackData; meta: TrackMet
     if (!token || finishing) return;
     setFinishing(true);
     setFinishError(null);
+    setCalc({ progress: 0, moveMs: CALC_STEPS[0].move, label: CALC_STEPS[0].label });
+
+    // 네트워크 요청과 진행 바 애니메이션을 동시에 시작해, 둘 다 끝나야 결과로 넘어간다.
+    const request = fetch("/api/responses", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ track: track.id, answers: finalAnswers, token }),
+    })
+      .then(async (res) => ({ res, data: await res.json().catch(() => ({})) }))
+      .catch(() => null);
+
+    // 스텝마다 목표치까지 채운 뒤(move) 잠시 멈춘다(hold) — 최소 4초.
+    for (const step of CALC_STEPS) {
+      if (cancelled.current) return;
+      setCalc({ progress: step.to, moveMs: step.move, label: step.label });
+      await wait(step.move + step.hold);
+    }
+    if (cancelled.current) return;
+
     try {
-      const res = await fetch("/api/responses", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ track: track.id, answers: finalAnswers, token }),
-      });
-      const data = await res.json().catch(() => ({}));
+      const result = await request;
+      if (!result) throw new Error("network");
+      const { res, data } = result;
       if (res.ok && data.ok) {
         saveGrant(track.id);
         router.push(`/survey/${track.id}/result`);
@@ -174,6 +215,15 @@ export function SurveyClient({ track, meta }: { track: TrackData; meta: TrackMet
     >
       <PageHeader meta={meta} />
 
+      {finishing ? (
+        <SurveyCalculating
+          progress={calc.progress}
+          moveMs={calc.moveMs}
+          label={calc.label}
+          track={track.id}
+        />
+      ) : (
+        <>
       <div style={{ marginTop: 32 }}>
         <QuestionProgress index={index + 1} total={questions.length} track={track.id} />
       </div>
@@ -261,6 +311,8 @@ export function SurveyClient({ track, meta }: { track: TrackData; meta: TrackMet
           </p>
         )}
       </div>
+        </>
+      )}
     </main>
   );
 }
