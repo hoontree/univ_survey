@@ -74,8 +74,8 @@ export function Hero() {
             color: "var(--text-faint)",
           }}
         >
-          🎟️ 우주설 수업 수강생에게 발급되는 <strong style={{ color: "var(--text-secondary)" }}>이용
-          토큰</strong>으로 이용할 수 있어요 · 토큰 1개당 2회
+          🪪 <strong style={{ color: "var(--text-secondary)" }}>인클래스에 등록된 우주설 수업
+          수강생</strong>이 본인 확인 후 이용할 수 있어요 · 1인당 2회
         </p>
 
         <div style={{ marginTop: 36 }}>

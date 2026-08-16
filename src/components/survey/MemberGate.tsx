@@ -2,55 +2,47 @@
 
 import { useState } from "react";
 import { Button } from "@/components/ds/Button";
-import { saveAccessToken } from "@/lib/storage";
+import { inputStyle } from "@/components/ds/inputStyle";
+import { saveMemberToken } from "@/lib/storage";
 import type { TrackMeta } from "@/lib/tracks";
 
-interface TokenGateProps {
+interface MemberGateProps {
   meta: TrackMeta;
-  /** 게이트 위에 띄울 사전 안내 (토큰 무효로 재입력하는 경우 등) */
+  /** 게이트 위에 띄울 사전 안내 (인증이 풀려 다시 확인하는 경우 등) */
   notice?: string | null;
-  onPass: (code: string) => void;
-}
-
-/** 하이픈 자동 삽입 표시 (XXXX-XXXX) */
-function prettify(raw: string): string {
-  const clean = raw.toUpperCase().replace(/[^0-9A-Z]/g, "").slice(0, 8);
-  return clean.length > 4 ? `${clean.slice(0, 4)}-${clean.slice(4)}` : clean;
+  onPass: (token: string) => void;
 }
 
 /**
- * 수강생 이용 토큰 입력 게이트 — 설문 진입 전 유효성 확인(차감 없음).
- * 통과하면 sessionStorage에 저장되어 다른 계열 설문에도 재입력이 필요 없다.
+ * 인클래스 본인 확인 게이트 — 설문 진입 전 명단 대조(차감 없음).
+ * 통과하면 발급된 토큰이 sessionStorage에 저장되어 다른 계열 설문에도
+ * 다시 확인할 필요가 없다.
  */
-export function TokenGate({ meta, notice, onPass }: TokenGateProps) {
-  const [value, setValue] = useState("");
+export function MemberGate({ meta, notice, onPass }: MemberGateProps) {
+  const [email, setEmail] = useState("");
+  const [phone, setPhone] = useState("");
   const [checking, setChecking] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
   const submit = async () => {
-    const code = value.replace(/-/g, "");
-    if (code.length < 8) {
-      setError("코드 8자리를 모두 입력해 주세요.");
+    if (!email.trim() || !phone.trim()) {
+      setError("아이디와 휴대폰번호를 모두 입력해 주세요.");
       return;
     }
     setChecking(true);
     setError(null);
     try {
-      const res = await fetch("/api/tokens/check", {
+      const res = await fetch("/api/members/verify", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ code }),
+        body: JSON.stringify({ email, phone }),
       });
       const data = await res.json();
       if (data.ok) {
-        saveAccessToken(code);
-        onPass(code);
+        saveMemberToken(data.token);
+        onPass(data.token);
       } else {
-        setError(
-          data.reason === "exhausted"
-            ? "이 토큰은 사용 횟수(2회)를 모두 사용했어요. 선생님께 새 토큰을 요청해 주세요."
-            : "등록되지 않은 토큰이에요. 코드를 다시 확인해 주세요.",
-        );
+        setError(data.error ?? "본인 확인에 실패했어요. 다시 시도해 주세요.");
       }
     } catch {
       setError("확인 중 문제가 생겼어요. 잠시 후 다시 시도해 주세요.");
@@ -60,12 +52,9 @@ export function TokenGate({ meta, notice, onPass }: TokenGateProps) {
   };
 
   return (
-    <div
-      className="univ-question-enter"
-      style={{ marginTop: 48, textAlign: "center" }}
-    >
+    <div className="univ-question-enter" style={{ marginTop: 48, textAlign: "center" }}>
       <span style={{ fontSize: 40 }} aria-hidden>
-        🎟️
+        🪪
       </span>
       <h1
         style={{
@@ -76,7 +65,7 @@ export function TokenGate({ meta, notice, onPass }: TokenGateProps) {
           color: "var(--text-strong)",
         }}
       >
-        이용 토큰을 입력해 주세요
+        본인 확인이 필요해요
       </h1>
       <p
         style={{
@@ -87,9 +76,9 @@ export function TokenGate({ meta, notice, onPass }: TokenGateProps) {
           color: "var(--text-muted)",
         }}
       >
-        {meta.name} 설문은 우주설 수업 수강생에게 발급된 토큰으로 이용할 수
-        있어요. 토큰 1개로 <strong style={{ color: "var(--text-primary)" }}>2회</strong>까지
-        추천을 받을 수 있습니다.
+        {meta.name} 설문은 인클래스에 등록된 우주설 수업 수강생이 이용할 수 있어요.
+        인클래스 아이디와 가입할 때 쓴 휴대폰번호를 입력해 주세요.{" "}
+        <strong style={{ color: "var(--text-primary)" }}>2회</strong>까지 추천을 받을 수 있습니다.
       </p>
 
       {notice && (
@@ -119,29 +108,31 @@ export function TokenGate({ meta, notice, onPass }: TokenGateProps) {
         }}
       >
         <input
-          value={value}
+          value={email}
           onChange={(e) => {
-            setValue(prettify(e.target.value));
+            setEmail(e.target.value);
             setError(null);
           }}
-          placeholder="XXXX-XXXX"
+          placeholder="인클래스 아이디"
           autoFocus
-          autoComplete="off"
+          autoComplete="username"
+          autoCapitalize="none"
           spellCheck={false}
-          inputMode="text"
-          aria-label="이용 토큰 코드"
-          style={{
-            width: "100%",
-            background: "var(--space-800)",
-            color: "var(--text-strong)",
-            border: `1px solid ${error ? "var(--danger-border)" : "var(--border-strong)"}`,
-            borderRadius: "var(--radius-md)",
-            padding: "14px 16px",
-            fontFamily: "var(--font-display)",
-            fontSize: "1.25rem",
-            letterSpacing: "0.15em",
-            textAlign: "center",
+          inputMode="email"
+          aria-label="인클래스 아이디(이메일)"
+          style={{ ...inputStyle, width: "100%", padding: "14px 16px", textAlign: "center" }}
+        />
+        <input
+          value={phone}
+          onChange={(e) => {
+            setPhone(e.target.value.replace(/[^0-9-]/g, ""));
+            setError(null);
           }}
+          placeholder="휴대폰번호"
+          autoComplete="tel"
+          inputMode="numeric"
+          aria-label="휴대폰번호"
+          style={{ ...inputStyle, width: "100%", padding: "14px 16px", textAlign: "center" }}
         />
         {error && (
           <p
@@ -163,12 +154,16 @@ export function TokenGate({ meta, notice, onPass }: TokenGateProps) {
 
       <p
         style={{
-          margin: "24px 0 0",
+          margin: "24px auto 0",
+          maxWidth: 380,
           fontSize: "var(--text-xs)",
+          lineHeight: "var(--leading-relaxed)",
           color: "var(--text-ghost)",
         }}
       >
-        토큰이 없다면 우주설 수업에서 안내받을 수 있어요.
+        아이디는 <b>@inclass.co.kr</b> 앞부분만 입력해도 돼요. 본인 번호가 등록돼 있지 않다면
+        학부모님 번호로도 확인할 수 있어요. 입력한 번호는 본인 확인에만 쓰고 그대로 저장하지
+        않습니다.
       </p>
     </div>
   );

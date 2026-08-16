@@ -31,36 +31,36 @@ export function clearAnswers(track: TrackId): void {
   }
 }
 
-/* ── 이용 토큰 (수강생 접근 코드) ── */
+/* ── 학생 인증 토큰 (인클래스 본인 확인 통과 증명) ── */
 
-const TOKEN_KEY = "universeol:token";
+const MEMBER_KEY = "universeol:member";
 const grantKey = (track: TrackId) => `universeol:granted:${track}`;
 
-export function loadAccessToken(): string | null {
+export function loadMemberToken(): string | null {
   try {
-    return sessionStorage.getItem(TOKEN_KEY);
+    return sessionStorage.getItem(MEMBER_KEY);
   } catch {
     return null;
   }
 }
 
-export function saveAccessToken(code: string): void {
+export function saveMemberToken(token: string): void {
   try {
-    sessionStorage.setItem(TOKEN_KEY, code);
+    sessionStorage.setItem(MEMBER_KEY, token);
   } catch {
     // ignore
   }
 }
 
-export function clearAccessToken(): void {
+export function clearMemberToken(): void {
   try {
-    sessionStorage.removeItem(TOKEN_KEY);
+    sessionStorage.removeItem(MEMBER_KEY);
   } catch {
     // ignore
   }
 }
 
-/** 결과 발급 성공(토큰 차감 완료) 표시 — 결과 페이지 진입 조건 */
+/** 결과 발급 성공(사용 횟수 차감 완료) 표시 — 결과 페이지 진입 조건 */
 export function saveGrant(track: TrackId): void {
   try {
     sessionStorage.setItem(grantKey(track), "1");
