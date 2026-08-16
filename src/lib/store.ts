@@ -1,29 +1,14 @@
-import { Firestore, type Settings } from "@google-cloud/firestore";
+import { getDb } from "@/lib/firestore";
 import type { Answers, TrackId } from "@/lib/types";
 
 /**
- * 응답 저장소 — Firestore (asia-northeast3).
+ * 응답 저장소 — Firestore `responses` 컬렉션.
  *
- * 인증은 Application Default Credentials로 자동 해결된다.
- *  - Cloud Run: 서비스 계정이 자동 주입
- *  - 로컬: `gcloud auth application-default login`
- *
- * 저장 내용은 트랙·답변 번호·추천 결과뿐이며 개인정보는 담지 않는다.
+ * 저장 내용은 트랙·답변 번호·추천 결과뿐이며 **개인정보는 담지 않는다.**
+ * 인클래스 명단 인증을 쓰더라도 응답에 이메일·이름을 붙이지 말 것 —
+ * 접근 제어에는 `members` 문서의 사용 횟수만 있으면 충분하다.
  */
 const COLLECTION = "responses";
-
-let db: Firestore | null = null;
-
-function getDb(): Firestore {
-  if (!db) {
-    const settings: Settings = {};
-    // Cloud Run에서는 메타데이터로 자동 해결되지만, 로컬에서는 명시가 필요할 수 있다
-    const projectId = process.env.GOOGLE_CLOUD_PROJECT ?? process.env.GCP_PROJECT;
-    if (projectId) settings.projectId = projectId;
-    db = new Firestore(settings);
-  }
-  return db;
-}
 
 export async function saveResponse(
   track: TrackId,

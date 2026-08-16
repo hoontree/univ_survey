@@ -133,7 +133,7 @@ export function DemoShowcase() {
           color: "var(--text-ghost)",
         }}
       >
-        미리보기 예시입니다 · 실제 추천은 이용 토큰으로 설문을 완료하면 받을 수 있어요
+        미리보기 예시입니다 · 실제 추천은 본인 확인 후 설문을 완료하면 받을 수 있어요
       </p>
     </section>
   );

@@ -23,7 +23,7 @@ export function ResultClient({ track, meta }: { track: TrackData; meta: TrackMet
     const answers = loadAnswers(track.id);
     const complete =
       answers && track.questions.every((q) => answers[q.id] !== undefined);
-    // 결과는 토큰 차감이 완료된 세션(grant)에서만 표시
+    // 결과는 사용 횟수 차감이 완료된 세션(grant)에서만 표시
     if (!complete || !hasGrant(track.id)) return "incomplete" as const;
     return computeResult(track, answers);
   }, [hydrated, track]);

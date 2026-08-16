@@ -2,13 +2,15 @@ import type { Metadata } from "next";
 import { AccountManager } from "@/components/admin/AccountManager";
 import { AdminAuth } from "@/components/admin/AdminAuth";
 import { LogoutButton } from "@/components/admin/LogoutButton";
-import { TokenGenerator } from "@/components/admin/TokenGenerator";
+import { MemberManager } from "@/components/admin/MemberManager";
+import { MemberUploader } from "@/components/admin/MemberUploader";
 import { Card } from "@/components/ds/Card";
 import { StatBar } from "@/components/ds/StatBar";
 import { getSessionUser } from "@/lib/admin-auth";
 import { hasAnyAdmin, listAdmins } from "@/lib/admins";
+import { listMembers, type MemberRecord } from "@/lib/members";
+import { keyFingerprint } from "@/lib/secret-keys";
 import { getStats, type TrackStats } from "@/lib/store";
-import { formatCode, listTokens, type TokenRecord } from "@/lib/tokens";
 import { getTrack, getTrackMeta, isTrackId } from "@/lib/tracks";
 
 export const metadata: Metadata = {
@@ -46,10 +48,10 @@ export default async function AdminPage() {
     );
   }
 
-  const [stats, tokens, admins] = await Promise.all([
+  const [stats, admins, members] = await Promise.all([
     getStats(),
-    listTokens(),
     listAdmins(),
+    listMembers(),
   ]);
   const totalResponses = stats.reduce((sum, s) => sum + s.total, 0);
 
@@ -105,7 +107,7 @@ export default async function AdminPage() {
         <LogoutButton />
       </div>
 
-      <TokenSection tokens={tokens} />
+      <MemberSection members={members} />
 
       <Card radius="xl" padding="24px" style={{ marginTop: 32 }}>
         <h2
@@ -144,12 +146,18 @@ export default async function AdminPage() {
   );
 }
 
-const LIST_LIMIT = 50;
+function MemberSection({ members }: { members: MemberRecord[] }) {
+  const unused = members.filter((m) => m.uses === 0).length;
+  const exhausted = members.filter((m) => m.uses >= m.maxUses).length;
+  const inUse = members.length - unused - exhausted;
 
-function TokenSection({ tokens }: { tokens: TokenRecord[] }) {
-  const unused = tokens.filter((t) => t.uses === 0).length;
-  const exhausted = tokens.filter((t) => t.uses >= t.maxUses).length;
-  const inUse = tokens.length - unused - exhausted;
+  /**
+   * 번호 해시는 ADMIN_TOKEN에서 파생한 키로 만든다. 시크릿이 교체되면 저장된
+   * 해시가 전부 무효가 되는데, 그 사실을 여기서 알려주지 않으면 "갑자기 아무도
+   * 본인 확인이 안 된다"로만 보인다.
+   */
+  const currentFp = keyFingerprint();
+  const stale = members.filter((m) => m.keyFp !== currentFp).length;
 
   return (
     <Card radius="xl" padding="24px" style={{ marginTop: 32 }}>
@@ -171,109 +179,44 @@ function TokenSection({ tokens }: { tokens: TokenRecord[] }) {
             color: "var(--text-strong)",
           }}
         >
-          🎟️ 이용 토큰
+          🪪 인클래스 명단
         </h2>
         <p style={{ margin: 0, fontSize: "var(--text-xs)", color: "var(--text-muted)" }}>
-          전체 <b style={{ color: "var(--text-strong)" }}>{tokens.length}</b> · 미사용{" "}
+          전체 <b style={{ color: "var(--text-strong)" }}>{members.length}</b> · 미사용{" "}
           <b style={{ color: "var(--success)" }}>{unused}</b> · 사용 중{" "}
           <b style={{ color: "var(--text-accent)" }}>{inUse}</b> · 소진{" "}
           <b style={{ color: "var(--danger)" }}>{exhausted}</b>
         </p>
       </header>
       <p style={{ margin: "6px 0 0", fontSize: "var(--text-xs)", color: "var(--text-faint)" }}>
-        토큰 1개로 결과를 2회 받을 수 있어요. 수강생에게 한 코드씩 나눠주세요.
+        인클래스에서 내려받은 구성원 목록 엑셀을 그대로 올리면 됩니다. 이미 있는 구성원은
+        정보만 갱신되고, 없는 구성원은 지워지지 않아요. 학생은 아이디(이메일)와 본인 또는
+        학부모 휴대폰번호로 본인 확인을 합니다.
       </p>
 
+      {stale > 0 && (
+        <p
+          role="alert"
+          style={{
+            margin: "12px 0 0",
+            padding: "10px 14px",
+            borderRadius: "var(--radius-md)",
+            border: "1px solid var(--danger-border)",
+            fontSize: "var(--text-xs)",
+            lineHeight: "var(--leading-relaxed)",
+            color: "var(--danger)",
+          }}
+        >
+          서명 키(ADMIN_TOKEN)가 바뀌어서 {stale}명의 저장된 번호로는 본인 확인을 할 수 없어요.
+          인클래스 명단 엑셀을 다시 올려주세요.
+        </p>
+      )}
+
       <div style={{ marginTop: 20 }}>
-        <TokenGenerator />
+        <MemberUploader />
       </div>
 
-      {tokens.length > 0 && (
-        <details style={{ marginTop: 20 }}>
-          <summary
-            style={{
-              cursor: "pointer",
-              fontSize: "var(--text-sm)",
-              fontWeight: "var(--fw-bold)",
-              color: "var(--text-secondary)",
-            }}
-          >
-            발급된 토큰 목록 (최근 {Math.min(tokens.length, LIST_LIMIT)}개)
-          </summary>
-          <div
-            style={{
-              marginTop: 12,
-              overflowX: "auto",
-              borderRadius: "var(--radius-lg)",
-              border: "1px solid var(--border-subtle)",
-            }}
-          >
-            <table
-              className="univ-table"
-              style={{
-                width: "100%",
-                minWidth: 420,
-                borderCollapse: "collapse",
-                fontSize: "var(--text-xs)",
-                textAlign: "left",
-              }}
-            >
-              <thead>
-                <tr style={{ background: "var(--surface-raised)" }}>
-                  {["코드", "사용", "상태", "생성일"].map((col) => (
-                    <th
-                      key={col}
-                      style={{
-                        padding: "8px 12px",
-                        borderBottom: "1px solid var(--border-subtle)",
-                        fontWeight: "var(--fw-bold)",
-                        color: "var(--text-secondary)",
-                      }}
-                    >
-                      {col}
-                    </th>
-                  ))}
-                </tr>
-              </thead>
-              <tbody>
-                {tokens.slice(0, LIST_LIMIT).map((t) => {
-                  const state =
-                    t.uses >= t.maxUses ? "소진" : t.uses > 0 ? "사용 중" : "미사용";
-                  const color =
-                    t.uses >= t.maxUses
-                      ? "var(--danger)"
-                      : t.uses > 0
-                        ? "var(--text-accent)"
-                        : "var(--success)";
-                  return (
-                    <tr key={t.code} style={{ borderBottom: "1px solid var(--w-06)" }}>
-                      <td
-                        style={{
-                          padding: "8px 12px",
-                          fontFamily: "ui-monospace, Menlo, monospace",
-                          letterSpacing: "0.06em",
-                          color: "var(--text-primary)",
-                        }}
-                      >
-                        {formatCode(t.code)}
-                      </td>
-                      <td style={{ padding: "8px 12px", color: "var(--text-muted)" }}>
-                        {t.uses} / {t.maxUses}
-                      </td>
-                      <td style={{ padding: "8px 12px", fontWeight: "var(--fw-bold)", color }}>
-                        {state}
-                      </td>
-                      <td style={{ padding: "8px 12px", color: "var(--text-faint)" }}>
-                        {t.createdAt.slice(0, 10)}
-                      </td>
-                    </tr>
-                  );
-                })}
-              </tbody>
-            </table>
-          </div>
-        </details>
-      )}
+      <MemberManager initialMembers={members} />
     </Card>
   );
 }

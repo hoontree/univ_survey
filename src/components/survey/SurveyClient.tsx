@@ -6,12 +6,12 @@ import { PageHeader } from "@/components/PageHeader";
 import { Button } from "@/components/ds/Button";
 import { OptionButton } from "@/components/ds/OptionButton";
 import { QuestionProgress } from "@/components/ds/QuestionProgress";
+import { MemberGate } from "@/components/survey/MemberGate";
 import { SurveyCalculating } from "@/components/survey/SurveyCalculating";
-import { TokenGate } from "@/components/survey/TokenGate";
 import {
-  clearAccessToken,
-  loadAccessToken,
+  clearMemberToken,
   loadAnswers,
+  loadMemberToken,
   saveAnswers,
   saveGrant,
 } from "@/lib/storage";
@@ -45,15 +45,15 @@ export function SurveyClient({ track, meta }: { track: TrackData; meta: TrackMet
   const router = useRouter();
   const hydrated = useHydrated();
 
-  /* ── 이용 토큰 게이트 ── */
+  /* ── 인클래스 본인 확인 게이트 ── */
   const persistedToken = useMemo(
-    () => (hydrated ? loadAccessToken() : null),
+    () => (hydrated ? loadMemberToken() : null),
     [hydrated],
   );
-  const [passedCode, setPassedCode] = useState<string | null>(null);
+  const [passedToken, setPassedToken] = useState<string | null>(null);
   const [revoked, setRevoked] = useState(false);
   const [gateNotice, setGateNotice] = useState<string | null>(null);
-  const token = passedCode ?? (revoked ? null : persistedToken);
+  const token = passedToken ?? (revoked ? null : persistedToken);
 
   /* ── 답변 상태 ── */
   const persisted = useMemo(
@@ -92,9 +92,9 @@ export function SurveyClient({ track, meta }: { track: TrackData; meta: TrackMet
   const selected = answers[question.id];
   const isLast = index === questions.length - 1;
 
-  const revokeToken = (notice: string) => {
-    clearAccessToken();
-    setPassedCode(null);
+  const revokeMember = (notice: string) => {
+    clearMemberToken();
+    setPassedToken(null);
     setRevoked(true);
     setGateNotice(notice);
   };
@@ -132,9 +132,9 @@ export function SurveyClient({ track, meta }: { track: TrackData; meta: TrackMet
         return;
       }
       if (data.reason === "exhausted") {
-        revokeToken("토큰 사용 횟수(2회)를 모두 사용했어요. 새 토큰이 있다면 입력해 주세요.");
-      } else if (data.reason === "invalid" || data.reason === "missing") {
-        revokeToken("입력했던 토큰이 더 이상 유효하지 않아요. 다시 확인해 주세요.");
+        revokeMember("추천 가능 횟수(2회)를 모두 사용했어요. 선생님께 문의해 주세요.");
+      } else if (data.reason === "invalid" || data.reason === "missing" || data.reason === "stale") {
+        revokeMember("본인 확인이 만료되었어요. 다시 확인해 주세요.");
       } else {
         setFinishError(data.error ?? "결과 발급에 실패했어요. 잠시 후 다시 시도해 주세요.");
       }
@@ -174,7 +174,7 @@ export function SurveyClient({ track, meta }: { track: TrackData; meta: TrackMet
     setNavIndex(index - 1);
   };
 
-  /* 토큰 없음 → 게이트 표시 */
+  /* 본인 확인 안 됨 → 게이트 표시 */
   if (hydrated && !token) {
     return (
       <main
@@ -189,11 +189,11 @@ export function SurveyClient({ track, meta }: { track: TrackData; meta: TrackMet
         }}
       >
         <PageHeader meta={meta} />
-        <TokenGate
+        <MemberGate
           meta={meta}
           notice={gateNotice}
-          onPass={(code) => {
-            setPassedCode(code);
+          onPass={(issued) => {
+            setPassedToken(issued);
             setGateNotice(null);
           }}
         />

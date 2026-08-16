@@ -1,15 +1,18 @@
 import { NextResponse } from "next/server";
+import { verifyMemberToken } from "@/lib/member-session";
+import { consumeMemberUse } from "@/lib/members";
 import { computeResult } from "@/lib/scoring";
 import { saveResponse } from "@/lib/store";
-import { consumeToken } from "@/lib/tokens";
 import { getTrack, isTrackId } from "@/lib/tracks";
 import type { Answers } from "@/lib/types";
 
 export const runtime = "nodejs";
 
 /**
- * 설문 완료 → 결과 발급. 이용 토큰 1회를 차감하고 익명 응답을 저장한다.
- * 토큰 차감이 실패하면 결과를 발급하지 않는다(응답도 저장하지 않음).
+ * 설문 완료 → 결과 발급. 인클래스 구성원의 사용 횟수 1회를 차감하고 익명
+ * 응답을 저장한다. 차감이 실패하면 결과를 발급하지 않는다(응답도 저장 안 함).
+ *
+ * 응답에는 이메일·이름을 넣지 않는다 — `responses`는 개인정보 없는 통계용이다.
  */
 export async function POST(request: Request) {
   let body: { track?: string; answers?: Answers; token?: string };
@@ -24,10 +27,10 @@ export async function POST(request: Request) {
     return NextResponse.json({ error: "track 또는 answers가 유효하지 않음" }, { status: 400 });
   }
   if (typeof token !== "string" || !token.trim()) {
-    return NextResponse.json({ error: "이용 토큰이 필요합니다", reason: "missing" }, { status: 401 });
+    return NextResponse.json({ error: "본인 확인이 필요합니다", reason: "missing" }, { status: 401 });
   }
 
-  // 답변 유효성을 토큰 차감 전에 확인 — 무효 요청으로 횟수를 잃지 않게
+  // 답변 유효성을 차감 전에 확인 — 무효 요청으로 횟수를 잃지 않게
   let winners: string[];
   try {
     winners = computeResult(getTrack(track), answers).winners;
@@ -38,14 +41,22 @@ export async function POST(request: Request) {
     );
   }
 
-  const consumed = await consumeToken(token);
+  const email = verifyMemberToken(token);
+  if (!email) {
+    return NextResponse.json(
+      { error: "본인 확인이 만료되었습니다. 다시 확인해 주세요", reason: "invalid" },
+      { status: 403 },
+    );
+  }
+
+  const consumed = await consumeMemberUse(email);
   if (!consumed.ok) {
     return NextResponse.json(
       {
         error:
           consumed.reason === "exhausted"
-            ? "토큰 사용 횟수를 모두 사용했습니다"
-            : "유효하지 않은 토큰입니다",
+            ? "추천 가능 횟수를 모두 사용했습니다"
+            : "본인 확인 정보를 찾을 수 없습니다",
         reason: consumed.reason,
       },
       { status: 403 },
