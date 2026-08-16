@@ -64,7 +64,8 @@ claude.ai/design 프로젝트 **유니버설 UNIVER設 Design System**(`8fd99337
 
 - **아이디·비밀번호 로그인**. 관리자 계정은 Firestore `admins` 컬렉션(비밀번호는 scrypt 해시)
 - **최초 설정**: 관리자 계정이 하나도 없으면 `/admin`이 "계정 만들기" 화면을 연다(first-run). 계정이 하나라도 생기면 자동으로 닫히고 로그인만 가능. **배포 직후 바로 첫 계정을 만들 것**
-- 세션은 HMAC 서명 쿠키(`univ_admin`, httpOnly, 30일). 서명 키는 기존 `ADMIN_TOKEN` 시크릿을 재사용
+- 세션은 HMAC 서명 쿠키(`__session`, httpOnly, 30일). 서명 키는 기존 `ADMIN_TOKEN` 시크릿을 재사용. **쿠키 이름을 바꾸지 말 것** — 앞단 Firebase Hosting은 백엔드로 넘기는 요청에서 `__session` 외의 쿠키를 떼어낸다
+- `/admin`·`/api/*`는 `next.config.ts`에서 `private, no-store`로 고정한다. 공개 문서용 `s-maxage=60` CDN 캐시에 딸려 들어가면 로그인 직후 새로고침이 캐시된 로그아웃 화면을 받고, 반대로 캐시된 대시보드가 남에게 나갈 수 있다
 - 로그인 후: 응답 통계(트랙별 응답 수·1위 분포·문항별 분포), 이용 토큰 생성/현황, 관리자 계정 추가·삭제·내 비밀번호 변경
 - API(`/api/tokens/generate`, `/api/responses/stats`)는 세션 쿠키 또는 `Authorization: Bearer <ADMIN_TOKEN>`(프로그래매틱/CLI) 둘 다 허용
 - 통계 조회는 전체 문서를 읽으므로 인스턴스 메모리에 60초 캐시
@@ -138,6 +139,16 @@ openssl rand -hex 24 | tr -d '\n' | gcloud secrets versions add universeol-admin
 ```
 
 관리자 비밀번호를 잊었고 계정이 하나뿐이라면, Firestore `admins` 컬렉션에서 그 문서를 지우면 `/admin`이 다시 최초 설정 모드로 돌아갑니다.
+
+#### 계정 추가 발급 (로그인 수단이 없을 때)
+
+`/admin` 안의 계정 추가 기능은 **이미 로그인한 관리자**만 쓸 수 있습니다. 남의 계정을 초기화하지 않고 개발자용 계정을 하나 더 만들려면 로컬에서:
+
+```bash
+npm run create-admin -- 아이디
+```
+
+`gcloud auth application-default login` 자격증명으로 Firestore `admins` 컬렉션에 계정을 하나 추가합니다. 비밀번호는 실행 중에 직접 입력하고(화면에 안 보이고 셸 히스토리에도 안 남음) scrypt 해시로만 저장됩니다. 기존 계정은 건드리지 않습니다.
 
 ## 남은 것
 

@@ -3,7 +3,12 @@ import { isAdminTokenValid } from "@/lib/admin";
 import { signSession, verifySession, SESSION_TTL_MS } from "@/lib/session";
 import { NextResponse } from "next/server";
 
-export const SESSION_COOKIE = "univ_admin";
+/**
+ * 쿠키 이름이 `__session`인 이유: 앞단 Firebase Hosting은 CDN 캐시를 위해
+ * 백엔드(Cloud Run)로 넘기는 요청에서 `__session` 외의 쿠키를 떼어낸다.
+ * 다른 이름을 쓰면 로그인은 되는데 그 뒤 요청에 세션이 실려오지 않는다.
+ */
+export const SESSION_COOKIE = "__session";
 const MAX_AGE_SEC = Math.floor(SESSION_TTL_MS / 1000);
 
 /** 로그인한 관리자 아이디 (세션 쿠키 기준). 없으면 null. */

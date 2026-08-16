@@ -9,6 +9,8 @@
     "esModuleInterop": true,
     "module": "esnext",
     "moduleResolution": "bundler",
+    // scripts/ 의 스크립트는 Node가 직접 실행하므로 `.ts` 확장자를 붙여 import한다
+    "allowImportingTsExtensions": true,
     "resolveJsonModule": true,
     "isolatedModules": true,
     "jsx": "react-jsx",
