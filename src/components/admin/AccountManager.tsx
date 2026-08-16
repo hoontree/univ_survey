@@ -2,16 +2,8 @@
 
 import { useState } from "react";
 import { Button } from "@/components/ds/Button";
+import { inputStyle } from "@/components/ds/inputStyle";
 import type { AdminRecord } from "@/lib/admins";
-
-const inputStyle = {
-  background: "var(--space-800)",
-  color: "var(--text-strong)",
-  border: "1px solid var(--border-strong)",
-  borderRadius: "var(--radius-md)",
-  padding: "10px 12px",
-  fontSize: "var(--text-sm)",
-} as const;
 
 /** 관리자 계정 관리 — 목록·추가·삭제·내 비밀번호 변경. */
 export function AccountManager({

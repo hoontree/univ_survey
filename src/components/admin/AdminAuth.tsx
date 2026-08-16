@@ -3,16 +3,9 @@
 import { useState } from "react";
 import { BrandLockup } from "@/components/BrandLockup";
 import { Button } from "@/components/ds/Button";
+import { inputStyle as baseInputStyle } from "@/components/ds/inputStyle";
 
-const inputStyle = {
-  width: "100%",
-  background: "var(--space-800)",
-  color: "var(--text-strong)",
-  border: "1px solid var(--border-strong)",
-  borderRadius: "var(--radius-md)",
-  padding: "12px 14px",
-  fontSize: "var(--text-sm)",
-} as const;
+const inputStyle = { ...baseInputStyle, width: "100%", padding: "12px 14px" } as const;
 
 /**
  * 관리자 로그인 / 최초 계정 생성 화면.

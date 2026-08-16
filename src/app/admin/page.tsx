@@ -2,11 +2,15 @@ import type { Metadata } from "next";
 import { AccountManager } from "@/components/admin/AccountManager";
 import { AdminAuth } from "@/components/admin/AdminAuth";
 import { LogoutButton } from "@/components/admin/LogoutButton";
+import { MemberManager } from "@/components/admin/MemberManager";
+import { MemberUploader } from "@/components/admin/MemberUploader";
 import { TokenGenerator } from "@/components/admin/TokenGenerator";
 import { Card } from "@/components/ds/Card";
 import { StatBar } from "@/components/ds/StatBar";
 import { getSessionUser } from "@/lib/admin-auth";
 import { hasAnyAdmin, listAdmins } from "@/lib/admins";
+import { listMembers, type MemberRecord } from "@/lib/members";
+import { keyFingerprint } from "@/lib/secret-keys";
 import { getStats, type TrackStats } from "@/lib/store";
 import { formatCode, listTokens, type TokenRecord } from "@/lib/tokens";
 import { getTrack, getTrackMeta, isTrackId } from "@/lib/tracks";
@@ -46,10 +50,11 @@ export default async function AdminPage() {
     );
   }
 
-  const [stats, tokens, admins] = await Promise.all([
+  const [stats, tokens, admins, members] = await Promise.all([
     getStats(),
     listTokens(),
     listAdmins(),
+    listMembers(),
   ]);
   const totalResponses = stats.reduce((sum, s) => sum + s.total, 0);
 
@@ -105,6 +110,8 @@ export default async function AdminPage() {
         <LogoutButton />
       </div>
 
+      <MemberSection members={members} />
+
       <TokenSection tokens={tokens} />
 
       <Card radius="xl" padding="24px" style={{ marginTop: 32 }}>
@@ -145,6 +152,81 @@ export default async function AdminPage() {
 }
 
 const LIST_LIMIT = 50;
+
+function MemberSection({ members }: { members: MemberRecord[] }) {
+  const unused = members.filter((m) => m.uses === 0).length;
+  const exhausted = members.filter((m) => m.uses >= m.maxUses).length;
+  const inUse = members.length - unused - exhausted;
+
+  /**
+   * 번호 해시는 ADMIN_TOKEN에서 파생한 키로 만든다. 시크릿이 교체되면 저장된
+   * 해시가 전부 무효가 되는데, 그 사실을 여기서 알려주지 않으면 "갑자기 아무도
+   * 본인 확인이 안 된다"로만 보인다.
+   */
+  const currentFp = keyFingerprint();
+  const stale = members.filter((m) => m.keyFp !== currentFp).length;
+
+  return (
+    <Card radius="xl" padding="24px" style={{ marginTop: 32 }}>
+      <header
+        style={{
+          display: "flex",
+          flexWrap: "wrap",
+          alignItems: "center",
+          justifyContent: "space-between",
+          gap: 12,
+        }}
+      >
+        <h2
+          style={{
+            margin: 0,
+            fontFamily: "var(--font-display)",
+            fontSize: "var(--text-lg)",
+            fontWeight: "var(--fw-bold)",
+            color: "var(--text-strong)",
+          }}
+        >
+          🪪 인클래스 명단
+        </h2>
+        <p style={{ margin: 0, fontSize: "var(--text-xs)", color: "var(--text-muted)" }}>
+          전체 <b style={{ color: "var(--text-strong)" }}>{members.length}</b> · 미사용{" "}
+          <b style={{ color: "var(--success)" }}>{unused}</b> · 사용 중{" "}
+          <b style={{ color: "var(--text-accent)" }}>{inUse}</b> · 소진{" "}
+          <b style={{ color: "var(--danger)" }}>{exhausted}</b>
+        </p>
+      </header>
+      <p style={{ margin: "6px 0 0", fontSize: "var(--text-xs)", color: "var(--text-faint)" }}>
+        인클래스에서 내려받은 구성원 목록 엑셀을 그대로 올리면 됩니다. 이미 있는 구성원은
+        정보만 갱신되고, 없는 구성원은 지워지지 않아요. 학생은 아이디(이메일)와 본인 또는
+        학부모 휴대폰번호로 본인 확인을 합니다.
+      </p>
+
+      {stale > 0 && (
+        <p
+          role="alert"
+          style={{
+            margin: "12px 0 0",
+            padding: "10px 14px",
+            borderRadius: "var(--radius-md)",
+            border: "1px solid var(--danger-border)",
+            fontSize: "var(--text-xs)",
+            lineHeight: "var(--leading-relaxed)",
+            color: "var(--danger)",
+          }}
+        >
+          서명 키(ADMIN_TOKEN)가 바뀌어서 {stale}명의 저장된 번호로는 본인 확인을 할 수 없어요.
+          인클래스 명단 엑셀을 다시 올려주세요.
+        </p>
+      )}
+
+      <div style={{ marginTop: 20 }}>
+        <MemberUploader />
+      </div>
+
+      <MemberManager initialMembers={members} />
+    </Card>
+  );
+}
 
 function TokenSection({ tokens }: { tokens: TokenRecord[] }) {
   const unused = tokens.filter((t) => t.uses === 0).length;

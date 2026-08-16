@@ -1,4 +1,4 @@
-import { Firestore, type Settings } from "@google-cloud/firestore";
+import { getDb } from "@/lib/firestore";
 import { hashPassword, verifyPassword } from "@/lib/password";
 
 /**
@@ -8,18 +8,6 @@ import { hashPassword, verifyPassword } from "@/lib/password";
 const COLLECTION = "admins";
 const USERNAME_RE = /^[a-z0-9._-]{3,20}$/;
 const MIN_PASSWORD = 8;
-
-let db: Firestore | null = null;
-
-function getDb(): Firestore {
-  if (!db) {
-    const settings: Settings = {};
-    const projectId = process.env.GOOGLE_CLOUD_PROJECT ?? process.env.GCP_PROJECT;
-    if (projectId) settings.projectId = projectId;
-    db = new Firestore(settings);
-  }
-  return db;
-}
 
 export function normalizeUsername(input: string): string {
   return input.trim().toLowerCase();
