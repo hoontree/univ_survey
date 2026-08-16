@@ -8,7 +8,8 @@
     "start": "next start",
     "lint": "eslint",
     "test": "vitest run",
-    "convert": "python3 scripts/convert_criteria.py"
+    "convert": "python3 scripts/convert_criteria.py",
+    "create-admin": "GOOGLE_CLOUD_PROJECT=universeol node --import ./scripts/alias-hook.mjs scripts/create-admin.ts"
   },
   "dependencies": {
     "@google-cloud/firestore": "^8.6.0",
