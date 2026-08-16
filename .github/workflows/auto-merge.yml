@@ -1,0 +1,55 @@
+name: Auto-merge
+
+# CI 가 초록이면 사람이 버튼을 누르지 않아도 머지되고, 머지되면 Cloud Build
+# 트리거가 Cloud Run 에 배포한다. 즉 이 워크플로가 켜진 뒤로 **PR 을 여는 것이
+# 곧 배포 예약**이다.
+#
+# 머지 판정 자체는 이 워크플로가 하지 않는다. GitHub 의 auto-merge 기능을 켜
+# 두기만 하고, 언제 머지할지는 GitHub 이 브랜치 보호의 필수 체크(check·build)를
+# 그대로 보고 정한다. 여기서 상태를 폴링하거나 머지를 직접 호출하면 그 게이트를
+# 우회하는 두 번째 경로가 생기는데, 배포로 이어지는 경로는 하나여야 한다.
+#
+# 브레이크는 **draft** 다. draft PR 은 auto-merge 를 켜 둬도 머지되지 않고,
+# Ready for review 로 바꾸는 순간 이 워크플로가 다시 돌아 스위치를 켠다. 아직
+# 배포하고 싶지 않은 변경은 draft 로 연다. 이미 켠 PR 을 되돌리려면 PR 화면의
+# "Disable auto-merge".
+#
+# 레포 설정 전제(둘 다 켜져 있어야 한다):
+#   allow_auto_merge     — 없으면 gh pr merge --auto 가 거절된다.
+#   allow_update_branch  — 브랜치 보호가 strict 라, main 이 한 칸이라도 앞서면
+#                          GitHub 이 PR 브랜치를 갱신할 수 있어야 머지가 이어진다.
+
+on:
+  pull_request:
+    types: [opened, reopened, ready_for_review]
+    branches: [main]
+
+# 기본 GITHUB_TOKEN 에 필요한 최소 권한만.
+permissions:
+  contents: write
+  pull-requests: write
+
+jobs:
+  enable:
+    # draft 는 건너뛴다 — ready_for_review 이벤트가 그때 다시 부른다.
+    if: github.event.pull_request.draft == false
+    # ci.yml 의 `CI_RUNNER` 스위치를 **일부러 따르지 않는다**. 이 잡은 API 호출
+    # 한 번이라 호스티드 분(minutes)이 사실상 들지 않는 반면, self-hosted 로
+    # 옮기면 러너가 꺼져 있을 때 auto-merge 스위치가 켜지지 않아 PR 이 조용히
+    # 멈춘다 — 그때 화면에는 "CI 대기 중"이 아니라 아무 표시도 남지 않는다.
+    runs-on: ubuntu-latest
+    steps:
+      # 머지 방식은 레포 설정을 따른다. 방식을 여기에 못 박으면 레포 설정을
+      # 바꿨을 때 이 워크플로만 조용히 실패한다.
+      #
+      # 폴백이 필요한 실제 경로가 하나 있다: draft 로 열면 CI 가 draft 에서도
+      # 돌므로, Ready 로 바꾸는 시점엔 이미 전부 초록일 수 있다. 그때 GitHub 은
+      # "기다릴 것이 없다"며 --auto 를 거절하고(clean status), 그대로 두면 PR 이
+      # 머지되지 않은 채 워크플로만 빨개진다. 폴백은 게이트를 우회하지 않는다 —
+      # 평범한 머지도 같은 머지 API 를 거치므로 필수 체크와 enforce_admins 가
+      # 그대로 적용된다.
+      - name: auto-merge 켜기
+        env:
+          PR_URL: ${{ github.event.pull_request.html_url }}
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: gh pr merge --auto --merge "$PR_URL" || gh pr merge --merge "$PR_URL"
