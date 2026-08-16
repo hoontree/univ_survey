@@ -17,7 +17,7 @@
 
 - 기준표 로직(`▲`=답변≤N 득표, 난이도 문항은 정확 일치, 성별 하드 필터)을 바꿀 땐 `src/lib/scoring.test.ts`를 먼저 확인. 채점 규칙 변경은 반드시 테스트로 검증.
 - 시크릿 값(`ADMIN_TOKEN` 등)을 코드·로그·커밋·대화에 남기지 않는다. Secret Manager에만 둔다.
-- `main` 푸시 시 Cloud Build가 자동 배포한다. 커밋 전 `npm test`·`npm run build`·`npm run lint` 통과 확인.
+- **`main`은 보호 브랜치라 직접 푸시할 수 없다.** 모든 변경은 브랜치 → PR. PR을 열면 CI(`check`=lint+test, `build`=next build)가 돌고, 초록이면 auto-merge가 머지하고, 머지되면 Cloud Build가 Cloud Run에 배포한다 — 즉 **PR을 여는 것이 곧 배포다**. 배포 준비가 안 된 변경은 **draft로 열 것**. 커밋 전 `npm test`·`npm run build`·`npm run lint`를 로컬에서 통과시켜라(CI가 같은 것을 돌린다). 자세한 내용은 [README의 PR 게이트 절](README.md#pr-게이트와-auto-merge-github-actions).
 - `src/data/admission-info.ts`(전형 정보)는 이미지 전사본이라 **강사 검수 전까지 사실 확정 아님**. 수치를 근거로 다른 판단을 내리지 말 것.
 
 <!-- BEGIN:nextjs-agent-rules -->

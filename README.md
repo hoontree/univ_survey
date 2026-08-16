@@ -87,7 +87,7 @@ claude.ai/design 프로젝트 **유니버설 UNIVER設 Design System**(`8fd99337
 | Firebase Hosting | https://universeol.web.app (Cloud Run 앞단 CDN+SSL) |
 | 런타임 서비스 계정 | `universeol-run@universeol.iam.gserviceaccount.com` (Firestore 읽기·쓰기 + 해당 시크릿만) |
 | 빌드 서비스 계정 | `universeol-build@universeol.iam.gserviceaccount.com` (배포·이미지 푸시·연결 토큰 읽기) |
-| 자동 배포 | Cloud Build 트리거 `build-trigger` — `main` 푸시 시 `cloudbuild.yaml` 실행 |
+| 자동 배포 | PR 머지 → Cloud Build 트리거 `build-trigger`(asia-northeast3) — `main` 푸시 시 `cloudbuild.yaml` 실행. PR 게이트는 [아래](#pr-게이트와-auto-merge-github-actions) 참조 |
 | 관리자 접근 | `/admin` 아이디·비밀번호 로그인. 세션 서명 키는 Secret Manager `universeol-admin-token` → `ADMIN_TOKEN`으로 주입 |
 | 스케일 | `min-instances=0` (평소 0원, 첫 접속 약 1~3초), 최대 10 |
 | 예산 알림 | 월 20,000원 · 50% / 90% / 100% |
@@ -109,9 +109,46 @@ gcloud run deploy universeol --source . --project=universeol --region=asia-north
 
 기존 설정(서비스 계정·시크릿·스케일)은 유지되므로 플래그를 다시 줄 필요는 없습니다.
 
+### PR 게이트와 auto-merge (GitHub Actions)
+
+`main`은 **보호 브랜치**라 직접 푸시할 수 없습니다(관리자 포함). 모든 변경은 PR을 거치고, 아래 체인이 사람 손 없이 끝까지 돕니다.
+
+```
+PR 열기 → CI (check·build) 초록 → GitHub auto-merge → main 푸시 → Cloud Build → Cloud Run
+```
+
+즉 **PR을 여는 것이 곧 배포 예약**입니다. 아직 배포하고 싶지 않은 변경은 **draft로 열면** 됩니다 — draft는 auto-merge가 켜지지 않고, Ready for review로 바꾸는 순간 켜집니다. 이미 켠 PR은 PR 화면의 "Disable auto-merge"로 되돌립니다.
+
+| 워크플로 | 하는 일 |
+|---|---|
+| `.github/workflows/ci.yml` | PR 전용. `check`(`npm run lint` + `npm test`)와 `build`(`npm run build`) 두 잡을 병렬로 실행 |
+| `.github/workflows/auto-merge.yml` | PR에 GitHub auto-merge 스위치만 켠다. 머지 시점 판정은 GitHub이 브랜치 보호 규칙을 보고 직접 함 |
+
+머지 판정을 워크플로가 직접 하지 않는 것은 의도입니다 — 상태를 폴링해 머지를 호출하면 필수 체크를 우회하는 두 번째 경로가 생기고, 배포로 이어지는 경로는 하나여야 합니다.
+
+**main 브랜치 보호**: 필수 체크 `check`·`build`(strict — main이 앞서면 브랜치 갱신 후 재검사), `enforce_admins`, 대화 해결 필수, force push·삭제 금지. 리뷰 승인은 필수가 아닙니다(1인 개발).
+
+#### 러너 스위치
+
+두 CI 잡의 `runs-on`은 레포 Actions 변수 `CI_RUNNER` **하나만** 봅니다. 변수가 없으면 `ubuntu-latest`(GitHub 호스티드)로 떨어지므로 **되돌린 상태가 기본값**입니다. 워크플로 실행이 시작될 때 읽히니 토글에 커밋도 PR도 필요 없습니다.
+
+```bash
+gh variable set CI_RUNNER --body self-hosted   # self-hosted 켜기
+gh variable delete CI_RUNNER                   # 호스티드로 되돌리기
+```
+
+현재는 상주 Mac mini 한 대에 러너 인스턴스 두 개(`Lizrdmini-Mac-mini-univ`, `-2`, `~/actions-runner-univ-survey{,-2}`, launchd 서비스)를 두고 self-hosted로 운용합니다. 러너 하나는 잡을 하나씩만 처리하므로, 인스턴스가 둘이어야 `check`와 `build`가 병렬로 돕니다. 러너는 **레포마다 따로 등록**해야 합니다 — 개인 계정이라 org 레벨 러너가 없어 다른 레포의 러너를 빌려 쓸 수 없습니다.
+
+self-hosted로 켠 상태에서 알아야 할 것 둘:
+
+1. 러너가 꺼져 있으면 잡은 실패가 아니라 **무한정 대기**합니다. 필수 체크가 초록이 되지 않으니 PR이 머지되지 않고(auto-merge 포함), 화면에는 오류가 아니라 아무 표시도 남지 않습니다. Mac mini를 오래 내려 둘 일이 있으면 **먼저 변수를 지울 것**.
+2. 호스티드와 달리 작업 공간이 매번 새것이 아닙니다. `~/.npm` 캐시가 남아 두 번째 실행부터 빨라지는 것이 이득입니다(`npm ci`라 `node_modules` 자체는 매번 새로 만듭니다).
+
+`auto-merge.yml`은 이 스위치를 **일부러 따르지 않고** 항상 호스티드에서 돕니다. API 호출 한 번이라 호스티드 분(minutes)이 사실상 들지 않는 반면, self-hosted로 옮기면 러너가 꺼져 있을 때 auto-merge 스위치가 조용히 안 켜집니다.
+
 ### GitHub 푸시 시 자동 배포
 
-구성 완료. `main`에 푸시하면 `cloudbuild.yaml`이 실행되어 이미지 빌드 → Artifact Registry 푸시 → Cloud Run 배포까지 자동으로 진행됩니다.
+구성 완료. `main`에 푸시하면(= PR이 머지되면) `cloudbuild.yaml`이 실행되어 이미지 빌드 → Artifact Registry 푸시 → Cloud Run 배포까지 자동으로 진행됩니다.
 
 빌드는 전용 계정 `universeol-build@`로 돌아가며 다음 권한만 갖습니다.
 
