@@ -184,7 +184,9 @@ PR 열기 → CI (check·build) 초록 → GitHub auto-merge → main 푸시 →
 
 #### 머지된 워크트리·브랜치 자동 정리
 
-원격 브랜치는 GitHub이 지웁니다(`delete_branch_on_merge=true`). 남는 **로컬** 브랜치와 `.claude/worktrees/` 아래 작업 디렉터리는 GitHub이 건드릴 수 없으므로 `scripts/prune_merged_worktrees.sh`가 정리합니다 — `.claude/settings.json`의 SessionStart hook이 세션마다 `--apply`로 부릅니다. 무엇이 지워질지 먼저 보려면 플래그 없이 직접 실행하세요(기본은 보고만 합니다).
+머지가 끝나면 워크트리·로컬 브랜치·원격 브랜치 셋이 남고, `scripts/prune_merged_worktrees.sh`가 **셋 다** 지웁니다 — `.claude/settings.json`의 SessionStart hook이 세션마다 `--apply`로 부릅니다. 무엇이 지워질지 먼저 보려면 플래그 없이 직접 실행하세요(기본은 보고만 합니다).
+
+원격까지 스크립트가 맡는 것은 중복이 아닙니다. `delete_branch_on_merge=true`를 켜 두어도 **auto-merge로 머지되면 GitHub이 원격 브랜치를 지우지 않습니다** — PR #10이 그랬고, 타임라인에 `head_ref_deleted` 이벤트 자체가 없었습니다(스위치를 켠 것이 `github-actions[bot]`이라 머지 시점의 삭제도 그 봇의 권한으로 시도됩니다). 이 저장소는 auto-merge가 기본 경로이므로, 원격 삭제는 남는 것을 줍는 보조가 아니라 평소 경로입니다.
 
 ```bash
 ./scripts/prune_merged_worktrees.sh          # 보고만
