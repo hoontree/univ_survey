@@ -20,6 +20,10 @@ on:
 # 스위치를 `env:` 로 두지 못한다 — `runs-on` 에서 쓸 수 있는 컨텍스트에 `env` 는
 # 없고 `vars` 는 있다. 그래서 두 잡이 같은 식을 각자 적는다.
 #
+# 현재 구성: 상주 Mac mini(10코어) 한 대에 러너 인스턴스 두 개
+# (`…-Mac-mini-univ`, `…-Mac-mini-univ-2`). 러너 하나는 잡을 하나씩만 처리하므로
+# 인스턴스 둘이면 check·build 가 병렬로 돈다.
+#
 # self-hosted 로 켠 상태에서 알아야 할 것 둘:
 #   1. 러너가 꺼져 있으면 잡은 실패가 아니라 **무한정 대기**한다. 필수 체크가
 #      초록이 되지 않으므로 PR 이 머지되지 않는다(auto-merge 포함). 러너를 오래
@@ -28,6 +32,10 @@ on:
 #      실행부터 빨라지는 것이 이득이고, package.json 에서 뺀 패키지가 러너에
 #      남아 있을 수 있다는 것이 대가다(`npm ci` 라 node_modules 자체는 매번 새로
 #      만든다 — 남는 건 ~/.npm 캐시뿐이다).
+#
+# 한 머신에 인스턴스를 여러 개 두므로, 스텝이 만드는 임시 파일 이름·경로는 전부
+# 인스턴스별(`RUNNER_TEMP`) 또는 실행별이어야 한다. `/tmp/foo` 처럼 고정된 이름을
+# 쓰면 두 잡이 같은 파일을 밟는다.
 # ───────────────────────────────────────────────────────────────────────────
 
 # 낡은 실행이 큐를 막지 않게 한다. 같은 PR 에 커밋을 연달아 올리면 이전 실행을
@@ -49,12 +57,54 @@ jobs:
         with:
           # 프로덕션 이미지(Dockerfile)와 같은 메이저를 쓴다.
           node-version: "22"
-          cache: npm
-      - run: npm ci
-      - run: npm run lint
-      # 기준표 채점 로직(`▲` 득표·난이도 정확 일치·성별 하드 필터)을 고정한다 —
-      # 여기가 조용히 깨지면 추천 결과가 통째로 틀린다. AGENTS.md 참조.
-      - run: npm test
+          # ── npm 캐시는 **호스티드에서만** 켠다 ──
+          # setup-node 의 `cache: npm` 은 잡이 끝날 때 `~/.npm` 을 통째로 타르로
+          # 말아 GitHub 캐시 서비스에 올린다. 매번 새 VM 으로 시작하는 호스티드
+          # 러너에서는 그게 유일한 캐시라 이득이지만, self-hosted 에서는 `~/.npm`
+          # 이 **머신에 그대로 남는다** — 이미 로컬에 있는 것을 네트워크로 한
+          # 바퀴 돌리는 순수 손해다.
+          #
+          # 게다가 그 손해가 커진다. self-hosted 의 `~/.npm` 은 이 레포만 쓰는
+          # 것이 아니라 머신에서 돌린 모든 것이 쌓여 계속 자라고(현재 2GB), 캐시
+          # 스코프는 브랜치별이라 PR 브랜치마다 자기 사본을 새로 올린다. 실측
+          # (run 32113358816, 700MiB 업로드):
+          #     build  잡 148s 중 `Post setup-node` 113s
+          #     check  잡  66s 중 `Post setup-node`  36s
+          # 실제 검사(lint 3s·test 2s·build 9s)보다 캐시 왕복이 10배 이상 길었다.
+          #
+          # 빈 문자열이면 setup-node 는 복원도 저장도 하지 않는다(post 스텝이
+          # 복원 때 심는 state 를 보고 그냥 빠진다). `CI_RUNNER` 를 지워 호스티드로
+          # 되돌리면 식이 'npm' 으로 평가돼 캐시가 다시 켜진다.
+          cache: ${{ vars.CI_RUNNER == '' && 'npm' || '' }}
+      # `--prefer-offline` 은 로컬 `~/.npm` 에 있는 타르볼을 레지스트리에 다시
+      # 묻지 않고 그대로 쓴다 — 캐시가 머신에 남는 self-hosted 에서 특히 이득이고,
+      # 무결성 검사는 그대로 lock 의 integrity 해시로 한다. audit·fund 는 검사와
+      # 무관한 네트워크 왕복이라 끈다.
+      - run: npm ci --prefer-offline --no-audit --no-fund
+      # lint 와 test 는 서로의 산출물을 읽지 않는다. 직렬로 둘 이유가 없으니 같이
+      # 띄우고 둘 다 기다린다 — 러너에 코어가 10개 있는데 한 번에 하나만 쓰는 것이
+      # 아깝다.
+      #
+      # 하나가 실패해도 **다른 하나를 끝까지 돌린다**. 먼저 죽은 쪽에서 멈추면
+      # lint 를 고친 다음 CI 를 한 번 더 돌려야 test 실패를 보게 되는데, 그러면
+      # 병렬로 아낀 시간을 왕복으로 도로 뱉는다.
+      #
+      # 로그는 각자 파일에 받아 두었다가 끝나고 그룹으로 편다. 그대로 흘리면 두
+      # 출력이 줄 단위로 뒤섞여 어느 쪽이 터졌는지 읽을 수 없다. 경로에
+      # `RUNNER_TEMP` 를 쓰는 건 같은 Mac mini 에 러너 인스턴스가 둘이기 때문이다.
+      - name: lint + test (병렬)
+        run: |
+          npm run lint > "$RUNNER_TEMP/lint.log" 2>&1 & lint_pid=$!
+          npm test     > "$RUNNER_TEMP/test.log" 2>&1 & test_pid=$!
+          wait $lint_pid; lint_rc=$?
+          wait $test_pid; test_rc=$?
+          echo "::group::npm run lint (exit $lint_rc)"; cat "$RUNNER_TEMP/lint.log"; echo "::endgroup::"
+          echo "::group::npm test (exit $test_rc)";     cat "$RUNNER_TEMP/test.log"; echo "::endgroup::"
+          [ "$lint_rc" -eq 0 ] || echo "::error::npm run lint 실패 — 위 'npm run lint' 그룹을 펼쳐 볼 것"
+          # 기준표 채점 로직(`▲` 득표·난이도 정확 일치·성별 하드 필터)을 고정한다 —
+          # 여기가 조용히 깨지면 추천 결과가 통째로 틀린다. AGENTS.md 참조.
+          [ "$test_rc" -eq 0 ] || echo "::error::npm test 실패 — 위 'npm test' 그룹을 펼쳐 볼 것"
+          exit $(( lint_rc | test_rc ))
 
   build:
     runs-on: ${{ vars.CI_RUNNER || 'ubuntu-latest' }}
@@ -64,9 +114,14 @@ jobs:
       - uses: actions/setup-node@v5
         with:
           node-version: "22"
-          cache: npm
-      - run: npm ci
+          # 위 check 잡의 `cache:` 주석 참조 — self-hosted 에서는 끈다.
+          cache: ${{ vars.CI_RUNNER == '' && 'npm' || '' }}
+      - run: npm ci --prefer-offline --no-audit --no-fund
       # 타입 오류·서버 컴포넌트 오류는 lint 가 아니라 여기서 잡힌다. Dockerfile
       # 이 빌드 인자 없이 도는 것과 같은 조건이라 시크릿이 필요 없다 — 런타임
       # 값(GOOGLE_CLOUD_PROJECT·ADMIN_TOKEN)은 Cloud Run 에서 주입된다.
+      #
+      # 빌드 자체의 병렬화는 손댈 것이 없다: Next 16 은 Turbopack 으로 빌드하고
+      # 프리렌더도 워커로 흩는다(로컬 실측 300%+ CPU). 여기에 워커 수를 손으로
+      # 박으면 러너가 바뀔 때마다 틀린 수가 된다.
       - run: npm run build

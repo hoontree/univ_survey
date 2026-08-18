@@ -167,7 +167,7 @@ PR 열기 → CI (check·build) 초록 → GitHub auto-merge → main 푸시 →
 
 | 워크플로 | 하는 일 |
 |---|---|
-| `.github/workflows/ci.yml` | PR 전용. `check`(`npm run lint` + `npm test`)와 `build`(`npm run build`) 두 잡을 병렬로 실행 |
+| `.github/workflows/ci.yml` | PR 전용. `check`와 `build`(`npm run build`) 두 잡을 병렬로 실행. `check` 안에서는 `npm run lint`와 `npm test`를 다시 동시에 띄우고 둘 다 기다립니다 — 하나가 실패해도 다른 하나를 끝까지 돌려, 한 번의 CI로 고칠 것을 전부 봅니다 |
 | `.github/workflows/auto-merge.yml` | PR에 GitHub auto-merge 스위치만 켠다. 머지 시점 판정은 GitHub이 브랜치 보호 규칙을 보고 직접 함 |
 
 머지 판정을 워크플로가 직접 하지 않는 것은 의도입니다 — 상태를 폴링해 머지를 호출하면 필수 체크를 우회하는 두 번째 경로가 생기고, 배포로 이어지는 경로는 하나여야 합니다.
@@ -185,10 +185,11 @@ gh variable delete CI_RUNNER                   # 호스티드로 되돌리기
 
 현재는 상주 Mac mini 한 대에 러너 인스턴스 두 개(`Lizrdmini-Mac-mini-univ`, `-2`, `~/actions-runner-univ-survey{,-2}`, launchd 서비스)를 두고 self-hosted로 운용합니다. 러너 하나는 잡을 하나씩만 처리하므로, 인스턴스가 둘이어야 `check`와 `build`가 병렬로 돕니다. 러너는 **레포마다 따로 등록**해야 합니다 — 개인 계정이라 org 레벨 러너가 없어 다른 레포의 러너를 빌려 쓸 수 없습니다.
 
-self-hosted로 켠 상태에서 알아야 할 것 둘:
+self-hosted로 켠 상태에서 알아야 할 것 셋:
 
 1. 러너가 꺼져 있으면 잡은 실패가 아니라 **무한정 대기**합니다. 필수 체크가 초록이 되지 않으니 PR이 머지되지 않고(auto-merge 포함), 화면에는 오류가 아니라 아무 표시도 남지 않습니다. Mac mini를 오래 내려 둘 일이 있으면 **먼저 변수를 지울 것**.
 2. 호스티드와 달리 작업 공간이 매번 새것이 아닙니다. `~/.npm` 캐시가 남아 두 번째 실행부터 빨라지는 것이 이득입니다(`npm ci`라 `node_modules` 자체는 매번 새로 만듭니다).
+3. 그래서 **`setup-node`의 GitHub Actions 캐시(`cache: npm`)는 self-hosted에서 끕니다.** 그 옵션은 잡이 끝날 때 `~/.npm`을 통째로 타르로 말아 GitHub 캐시 서비스에 올리는데, 머신에 이미 남아 있는 것을 네트워크로 한 바퀴 돌리는 순수 손해입니다. 게다가 `~/.npm`은 이 레포만 쓰는 것이 아니라 계속 자라고(현재 2GB) 캐시 스코프는 브랜치별이라 PR마다 사본을 새로 올립니다 — 실측(run 32113358816)에서 `build` 잡 148초 중 113초, `check` 잡 66초 중 36초가 700MiB 업로드였습니다. 실제 검사(lint 3초·test 2초·build 9초)보다 캐시 왕복이 10배 이상 길었던 셈입니다. `CI_RUNNER`를 지워 호스티드로 되돌리면 캐시는 자동으로 다시 켜집니다(호스티드는 매번 새 VM이라 그때는 그것이 유일한 캐시입니다).
 
 `auto-merge.yml`은 이 스위치를 **일부러 따르지 않고** 항상 호스티드에서 돕니다. API 호출 한 번이라 호스티드 분(minutes)이 사실상 들지 않는 반면, self-hosted로 옮기면 러너가 꺼져 있을 때 auto-merge 스위치가 조용히 안 켜집니다.
 
