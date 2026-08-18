@@ -2,9 +2,13 @@
 # 머지가 끝난 Claude Code 워크트리·브랜치 정리 — SessionStart hook 겸 수동 도구.
 #
 # PR 이 squash 로 머지되면 남는 것은 셋이다: `.claude/worktrees/` 아래의 작업
-# 디렉터리, 로컬 브랜치, 그리고 원격 브랜치. 원격은 레포 설정
-# `delete_branch_on_merge=true` 가 지우지만 GitHub 은 노트북을 건드릴 수 없으므로
-# 앞의 둘은 여기서 지운다(설정이 켜지기 전에 머지된 PR 을 위해 원격도 한 번 더 본다).
+# 디렉터리, 로컬 브랜치, 그리고 원격 브랜치. **셋 다 이 스크립트가 지운다.**
+#
+# 원격까지 지우는 것이 중복처럼 보이지만 아니다. `delete_branch_on_merge=true` 를
+# 켜 두어도 auto-merge 로 머지되면 GitHub 이 원격 브랜치를 지우지 않는다 — PR #10
+# 이 그랬다(타임라인에 head_ref_deleted 이벤트 자체가 없다. 스위치를 켠 것이
+# github-actions[bot] 이라 머지 시점의 삭제도 그 봇의 권한으로 시도된다).
+# 그러니 원격 삭제는 남는 것을 줍는 보조가 아니라 **평소 경로**다.
 #
 # **판정을 gh 에 묻는 것이 이 스크립트의 존재 이유다.** 이 저장소는 squash 머지라
 # (allow_merge_commit=false) 브랜치 커밋들이 main 의 조상이 되지 않는다. 그래서
@@ -114,8 +118,9 @@ while IFS= read -r line; do
     # squash 머지라 git 이 보기엔 안 머지된 브랜치다 — -d 는 거절하고 조용히 끝난다.
     git branch -D "$name" >/dev/null 2>&1 \
       || log "워크트리는 지웠지만 브랜치 $name 삭제에 실패했습니다"
-    # 원격은 보통 GitHub 이 이미 지웠다(delete_branch_on_merge). 남아 있을 때만
-    # 손댄다 — 없는 브랜치에 --delete 를 쏘면 실패가 로그만 더럽힌다.
+    # 원격. auto-merge 경로에서는 GitHub 이 지우지 않으므로 보통 여기서 지워진다.
+    # 그래도 존재를 먼저 확인하는 것은, 사람이 직접 머지해 GitHub 이 이미 지운
+    # 경우에 없는 브랜치로 --delete 를 쏘아 로그만 더럽히지 않기 위해서다.
     if git ls-remote --exit-code --heads origin "$name" >/dev/null 2>&1; then
       git push origin --delete "$name" >/dev/null 2>&1 \
         || log "원격 브랜치 $name 삭제에 실패했습니다"

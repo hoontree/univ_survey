@@ -25,7 +25,7 @@
 - 시크릿 값(`ADMIN_TOKEN` 등)을 코드·로그·커밋·대화에 남기지 않는다. Secret Manager에만 둔다.
 - **`main`은 보호 브랜치라 직접 푸시할 수 없다.** 모든 변경은 브랜치 → PR. PR을 열면 CI(`check`=lint+test, `build`=next build)가 돌고, 초록이면 auto-merge가 머지하고, 머지되면 Cloud Build가 Cloud Run에 배포한다 — 즉 **PR을 여는 것이 곧 배포다**.
 - **머지는 squash 하나뿐이다**(레포가 merge commit·rebase를 막는다). `auto-merge.yml`의 `gh pr merge --squash`는 그 설정과 함께 움직여야 한다 — 레포가 허용하지 않는 방식을 적으면 워크플로만 조용히 실패하고 PR은 머지되지 않는다. 스택 브랜치를 쌓았다면 아래 PR은 `git rebase --onto main <위 PR의 마지막 커밋>`으로 옮긴다.
-- 머지가 끝난 워크트리·브랜치는 `scripts/prune_merged_worktrees.sh`(SessionStart hook)가 지운다. squash 때문에 `git branch --merged main`은 여기서 아무것도 찾지 못하므로 판정은 `gh`에 묻는다 — 그 판정 경로나 가드 여섯(범위·자기 자신·locked·detached·미커밋 변경·tip==`headRefOid`)을 느슨하게 하지 말 것.
+- 머지가 끝난 워크트리·브랜치(로컬·원격 둘 다)는 `scripts/prune_merged_worktrees.sh`(SessionStart hook)가 지운다. 원격까지 지우는 것은 중복이 아니다 — auto-merge 로 머지되면 `delete_branch_on_merge` 가 켜져 있어도 GitHub 이 원격 브랜치를 지우지 않는다. squash 때문에 `git branch --merged main`은 여기서 아무것도 찾지 못하므로 판정은 `gh`에 묻는다 — 그 판정 경로나 가드 여섯(범위·자기 자신·locked·detached·미커밋 변경·tip==`headRefOid`)을 느슨하게 하지 말 것.
 - **PR은 항상 ready로 연다(`--draft` 금지).** draft로 열면 auto-merge가 걸리지 않아 사람이 다시 손대야 하고, 그대로 잊혀 방치된다. 배포될 준비가 안 됐으면 PR을 여는 대신 **브랜치에만 두고 기다린다** — "일단 draft로 올려두기"는 하지 않는다. 그러니 **PR을 열기 전에** 로컬에서 `npm test`·`npm run build`·`npm run lint`를 통과시켜라(CI가 같은 것을 돌린다). 자세한 내용은 [README의 PR 게이트 절](README.md#pr-게이트와-auto-merge-github-actions).
 - `src/data/admission-info.ts`(전형 정보)는 이미지 전사본이라 **강사 검수 전까지 사실 확정 아님**. 수치를 근거로 다른 판단을 내리지 말 것.
 
