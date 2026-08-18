@@ -15,6 +15,9 @@
 - 응답 저장(`/api/responses`)은 **인클래스 구성원의 사용 횟수 차감과 원자적으로 묶여 있다** (`src/lib/members.ts`의 `consumeMemberUse` Firestore 트랜잭션). 본인 확인을 우회하는 저장 경로를 만들지 말 것. 랜딩 데모는 의도적으로 API를 호출하지 않는다.
 - 학생 인증 토큰(`member-session.ts`)은 관리자 세션(`session.ts`)과 **반드시 다른 키로** 서명한다. 같은 키를 쓰면 학생 토큰을 `__session` 쿠키에 넣는 것만으로 관리자가 된다 — `member-session.test.ts`의 교차 사용 거절 테스트를 지우지 말 것.
 - 구성원 휴대폰번호는 **해시로만** 저장한다(`hashPhone`). 평문 번호를 Firestore·로그·응답 문서에 남기지 말 것. 명단 재업로드는 병합이며 `planUpsert`의 갱신 타입에 `uses`를 추가하지 말 것 — 사용 횟수가 초기화된다.
+- 본인 확인은 **2단계**다. ① `/api/members/verify`가 명단과 대조하고 챌린지(`otp-challenge.ts`)만 발급 ② `/api/members/confirm`이 Firebase 전화 인증 ID 토큰을 검증하고 비로소 학생 토큰을 발급. **문자는 명단 대조를 통과한 뒤에만 나간다** — 이 순서를 뒤집거나 1단계에서 학생 토큰을 내주지 말 것(문자 요금이 곧 공격 표면이다).
+- `confirm`에서 **ID 토큰의 번호 해시와 챌린지의 번호 해시를 반드시 대조**한다. 빼면 자기 번호로 받은 멀쩡한 토큰을 남의 아이디에 붙일 수 있다. `firebase-id-token.test.ts`의 위조·만료·`alg=none`·타 프로젝트 토큰 거절 테스트를 지우지 말 것.
+- Firebase 웹 설정은 `NEXT_PUBLIC_`이나 정적 번들에 박지 않는다(`firebase-config.ts`). 환경변수가 없으면 `otp_unavailable`로 **막는다** — OTP를 건너뛰는 폴백을 만들면 설정 실수가 곧 인증 우회가 된다.
 - 관리자 인증은 아이디·비밀번호 로그인(세션 쿠키). 비밀번호는 `src/lib/password.ts`의 scrypt 해시로만 저장 — 평문을 코드·로그·Firestore에 남기지 말 것. 세션 서명 키는 `ADMIN_TOKEN`(재사용). 관리자 API는 `requireApiAdmin`(세션 쿠키 또는 Bearer)로 보호한다. 인증 계층: `password.ts`/`session.ts`(순수, 테스트됨) → `admins.ts`(Firestore) → `admin-auth.ts`(next/headers).
 
 - 기준표 로직(`▲`=답변≤N 득표, 난이도 문항은 정확 일치, 성별 하드 필터)을 바꿀 땐 `src/lib/scoring.test.ts`를 먼저 확인. 채점 규칙 변경은 반드시 테스트로 검증.

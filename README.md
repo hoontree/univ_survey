@@ -1,6 +1,6 @@
 # 유니버설 UNIVER設 — 논술 전형 추천 시스템
 
-**신준섭 X 우주설 논술연구소**의 대학 추천 설문 서비스. 학생이 계열(의대/약대/비메디컬)을 고르고 문항에 답하면, 각 답변이 기준표를 충족한 대학에 투표되고 **최다 득표 대학이 최종 추천**됩니다. **인클래스에 등록된 우주설 수업 수강생**만 아이디·휴대폰번호로 본인 확인 후 이용할 수 있습니다(1인당 2회).
+**신준섭 X 우주설 논술연구소**의 대학 추천 설문 서비스. 학생이 계열(의대/약대/비메디컬)을 고르고 문항에 답하면, 각 답변이 기준표를 충족한 대학에 투표되고 **최다 득표 대학이 최종 추천**됩니다. **인클래스에 등록된 우주설 수업 수강생**만 아이디·휴대폰번호로 명단 대조 후 **문자 인증**까지 마쳐야 이용할 수 있습니다(1인당 2회).
 
 ## 실행
 
@@ -13,10 +13,14 @@ npm test           # 채점 엔진 단위 테스트
 명단·관리자 기능까지 로컬에서 쓰려면 Firestore 접근과 서명 키가 필요합니다. `gcloud auth application-default login`의 기본 프로젝트가 `universeol`이 아닐 수 있으니 명시해 주세요.
 
 ```bash
-GOOGLE_CLOUD_PROJECT=universeol ADMIN_TOKEN=$(openssl rand -hex 24) npm run dev
+GOOGLE_CLOUD_PROJECT=universeol ADMIN_TOKEN=$(openssl rand -hex 24) \
+FIREBASE_API_KEY=… FIREBASE_AUTH_DOMAIN=universeol.firebaseapp.com \
+FIREBASE_WEB_APP_ID=… npm run dev
 ```
 
 로컬 `ADMIN_TOKEN`은 아무 값이나 되지만, 그 값으로 만든 번호 해시는 그 세션에서만 유효합니다(운영 `members` 문서와는 지문이 달라 `stale`로 뜹니다).
+
+`FIREBASE_*` 값은 `firebase apps:sdkconfig web --project universeol`로 확인합니다(시크릿 아님, `cloudbuild.yaml`에도 그대로 있음). 이 값이 없으면 본인 확인 게이트가 닫힙니다. `localhost`에서는 실제 문자를 보낼 수 없으니 Firebase 콘솔의 **테스트 전화번호**를 쓰세요.
 
 ## 구조
 
@@ -29,6 +33,9 @@ GOOGLE_CLOUD_PROJECT=universeol ADMIN_TOKEN=$(openssl rand -hex 24) npm run dev
 | `src/lib/scoring.ts` | 득표 집계 엔진 (하드 필터·공동 1위 처리) |
 | `src/lib/store.ts` | 응답 저장소 (Firestore) |
 | `src/lib/members.ts` | 인클래스 명단 (Firestore `members` 컬렉션, 번호 해시·트랜잭션 차감) |
+| `src/lib/firebase-id-token.ts` | 전화 인증 ID 토큰 검증 (무의존성 RS256, `firebase-admin` 대체) |
+| `src/lib/otp-challenge.ts` | 명단 대조 ↔ 문자 인증을 잇는 10분짜리 서명 챌린지 |
+| `src/lib/firebase-client.ts` | 브라우저 전용 Firebase SDK 동적 로더 (reCAPTCHA·문자 발송) |
 | `src/lib/xlsx.ts` | 무의존성 .xlsx 리더 (명단 업로드 해석) |
 | `src/app/` | 랜딩(`/`) → 설문(`/survey/[track]`) → 결과(`…/result`), 관리자(`/admin`) |
 | `src/app/globals.css` | 디자인 토큰 + 시그니처 효과 + 컴포넌트 CSS |
@@ -61,20 +68,33 @@ claude.ai/design 프로젝트 **유니버설 UNIVER設 Design System**(`8fd99337
 - **성별 문항은 하드 필터**: 미충족 대학(예: 남학생→여대)은 득표와 무관하게 추천에서 제외되고 "지원 불가"로 표시. `src/data/criteria/*.json`의 `hardFilter` 플래그로 제어
 - 동점 1위는 공동 1위로 모두 표시, 순서는 기준표 컬럼 순서 유지
 
-## 인클래스 명단 인증
+## 인클래스 명단 + 휴대폰 인증
 
-수강생 접근 제어는 외부 수강생 관리 서비스 **인클래스**의 구성원 명단을 기준으로 한다.
+수강생 접근 제어는 외부 수강생 관리 서비스 **인클래스**의 구성원 명단을 기준으로 하고, 그 위에 **문자 인증**을 한 겹 얹는다. 명단 대조는 "등록된 사람인가"만 증명하므로, 아이디와 번호를 친구에게 알려주면 그대로 뚫린다. 그 번호로 온 문자를 실제로 받아야 통과하게 만드는 것이 두 번째 단계다.
 
-- 학생은 설문 진입 시 **인클래스 아이디(이메일) + 휴대폰번호**로 본인 확인(`POST /api/members/verify`, 차감 없음)한다. 통과하면 12시간짜리 서명 토큰을 받아 sessionStorage에 보관하고, **결과 발급 시 1회 차감**(`POST /api/responses`에서 Firestore 트랜잭션으로 원자 처리)한다. 1인당 2회
+- 본인 확인은 **2단계**다. ① **인클래스 아이디(이메일) + 휴대폰번호**를 명단과 대조(`POST /api/members/verify`) → 통과하면 10분짜리 **챌린지**만 발급 ② 그 번호로 받은 인증번호 확인(`POST /api/members/confirm`) → 비로소 12시간짜리 학생 토큰 발급. 토큰은 sessionStorage에 보관하고, **결과 발급 시 1회 차감**(`POST /api/responses`에서 Firestore 트랜잭션으로 원자 처리)한다. 1인당 2회
+- **문자는 명단 대조를 통과한 뒤에만 나간다.** 명단에 없는 번호로는 한 통도 발송되지 않는다 — 문자 요금이 곧 공격 표면이라 이 순서가 중요하다
 - 아이디는 `@inclass.co.kr` 앞부분만 입력해도 된다(도메인 자동 부착). 번호는 **본인·학부모 중 하나만 맞으면** 통과 — 인클래스에 본인 번호가 비어 있는 구성원이 적지 않다
 - 마지막 문항은 자동 제출하지 않음 — 차감이 있는 행동이라 "결과 보기" 버튼으로 명시적으로 제출. 무효 답변으로는 차감되지 않음(차감 전에 답변 검증)
 - 명단 등록: `/admin` → "인클래스 명단"에서 인클래스 구성원 목록 엑셀(.xlsx)을 업로드. **병합**이라 이미 있는 구성원은 정보만 갱신되고, 파일에 없는 구성원은 지워지지 않으며, 이미 쓴 횟수도 초기화되지 않는다. 반이 여러 개면 파일을 나눠 올려도 `groups`가 합쳐진다
 - 2회를 다 쓴 학생은 관리자 목록의 **"초기화"** 버튼으로 다시 열어준다 (토큰 시절의 "새 토큰 발급"을 대신하는 유일한 경로)
 - 랜딩의 자동 재생 미리보기(DemoShowcase)는 본인 확인 없이 볼 수 있는 홍보용 — API 호출·저장 없음
 
+### 휴대폰 문자 인증 (Firebase Auth)
+
+문자 발송은 **Firebase Authentication 전화 로그인**을 쓴다. 국내 SMS 대행사를 쓰면 필요한 **발신번호 사전등록**(사업자 서류, 수일 소요)을 건너뛸 수 있어서다.
+
+- 브라우저가 Firebase SDK를 **동적 로드**해 invisible reCAPTCHA → `signInWithPhoneNumber` → ID 토큰을 받고, 서버가 그 토큰을 검증한다(`src/lib/firebase-id-token.ts`, 의존성 없이 RS256 검증). `firebase-admin`은 쓰지 않는다
+- 서버는 **ID 토큰의 번호 해시와 챌린지의 번호 해시를 대조**한다. 이게 없으면 자기 번호로 멀쩡히 받은 토큰을 남의 아이디에 붙일 수 있다
+- Firebase 웹 설정(`FIREBASE_API_KEY`·`FIREBASE_AUTH_DOMAIN`·`FIREBASE_WEB_APP_ID`)은 **시크릿이 아니지만** 정적 번들에 박지 않고 명단 대조를 통과한 응답으로만 내려보낸다. 값이 비어 있으면 게이트가 `otp_unavailable`로 **닫힌다** — OTP를 건너뛰는 폴백은 두지 않는다
+- 콘솔 설정(이미 반영됨): 전화 로그인 활성화, **SMS 지역 정책 = 대한민국(KR)만 허용**, 승인된 도메인에 `jwessay.com`·`www.jwessay.com`·`universeol.web.app`. 지역 정책의 기본값은 *전 지역 차단*이라 여기를 열지 않으면 문자가 아예 안 간다
+- **비용**: 인증 문자는 건당 과금(Blaze). 급증하면 예산 알림에 잡힌다
+- **로컬 개발**: `localhost`는 전화 인증 승인 도메인이 될 수 없다. Firebase 콘솔의 **테스트 전화번호**(고정 인증번호)를 등록해 확인한다
+
 ### 개인정보 취급
 
 - **휴대폰번호는 평문으로 저장하지 않는다.** `ADMIN_TOKEN`에서 파생한 키로 HMAC한 값과 관리자 식별용 뒤 4자리만 `members` 문서에 남는다
+- 다만 **Firebase Authentication 사용자 레코드에는 인증한 번호가 평문으로 남는다**(전화 로그인의 구조상 불가피). 학기말 파기 때 `/admin`의 명단 삭제와 **함께 Firebase 콘솔 Authentication → Users도 비울 것**
 - 업로드한 엑셀은 디스크·GCS에 쓰지 않고 메모리에서만 처리한다. `/api/members/*`는 이메일·번호를 로그로 남기지 않는다
 - **응답(`responses`)에는 이름·이메일을 넣지 않는다** — 접근 제어에는 `members`의 사용 횟수만 있으면 충분하다. 답변과 실명을 잇지 말 것
 - 학기가 끝나면 `/admin`의 "명단 전체 삭제"로 파기한다
@@ -109,6 +129,7 @@ claude.ai/design 프로젝트 **유니버설 UNIVER設 Design System**(`8fd99337
 | 빌드 서비스 계정 | `universeol-build@universeol.iam.gserviceaccount.com` (배포·이미지 푸시·연결 토큰 읽기) |
 | 자동 배포 | PR 머지 → Cloud Build 트리거 `build-trigger`(asia-northeast3) — `main` 푸시 시 `cloudbuild.yaml` 실행. PR 게이트는 [아래](#pr-게이트와-auto-merge-github-actions) 참조 |
 | 관리자 접근 | `/admin` 아이디·비밀번호 로그인. 세션 서명 키는 Secret Manager `universeol-admin-token` → `ADMIN_TOKEN`으로 주입 |
+| 문자 인증 | Firebase Authentication 전화 로그인. 웹 설정은 `cloudbuild.yaml`의 `_FIREBASE_*` 치환값 → `FIREBASE_*` 환경변수 (시크릿 아님) |
 | 스케일 | `min-instances=0` (평소 0원, 첫 접속 약 1~3초), 최대 10 |
 | 예산 알림 | 월 20,000원 · 50% / 90% / 100% |
 
