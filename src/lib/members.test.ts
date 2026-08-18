@@ -5,6 +5,7 @@ import {
   type MemberDoc,
   evaluateMember,
   hashPhone,
+  maskName,
   normalizeEmail,
   normalizePhone,
   parseMemberSheet,
@@ -213,6 +214,19 @@ describe("planUpsert", () => {
     expect(plan.creates[0].data.phoneHash).toBeNull();
     expect(plan.creates[0].data.parentPhoneHash).toBe(hashPhone("01055556666"));
     expect(plan.creates[0].data.phoneTail).toBe("6666");
+  });
+});
+
+describe("maskName", () => {
+  it("가운데를 별표로 가린다", () => {
+    expect(maskName("김민수")).toBe("김*수");
+    expect(maskName("남궁민수")).toBe("남**수");
+  });
+
+  it("두 글자는 뒤를, 한 글자는 그대로", () => {
+    expect(maskName("김민")).toBe("김*");
+    expect(maskName("김")).toBe("김");
+    expect(maskName("")).toBe("");
   });
 });
 

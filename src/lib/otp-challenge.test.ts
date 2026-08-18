@@ -11,22 +11,26 @@ describe("OTP 챌린지", () => {
     process.env.ADMIN_TOKEN = "test-secret-key";
   });
 
-  it("서명한 챌린지에서 이메일과 번호 해시를 되찾는다", () => {
-    expect(verifyChallenge(signChallenge(EMAIL, HASH))).toEqual({
-      email: EMAIL,
+  it("번호 해시만 담은 챌린지 — 아직 누구인지 모르는 상태", () => {
+    expect(verifyChallenge(signChallenge(HASH))).toEqual({ phoneHash: HASH, email: null });
+  });
+
+  it("구성원이 확정되면 이메일까지 담는다", () => {
+    expect(verifyChallenge(signChallenge(HASH, EMAIL))).toEqual({
       phoneHash: HASH,
+      email: EMAIL,
     });
   });
 
   it("10분이 지나면 null", () => {
     const now = Date.now();
-    const challenge = signChallenge(EMAIL, HASH, now);
+    const challenge = signChallenge(HASH, EMAIL, now);
     expect(verifyChallenge(challenge, now + CHALLENGE_TTL_MS - 1)).not.toBeNull();
     expect(verifyChallenge(challenge, now + CHALLENGE_TTL_MS + 1)).toBeNull();
   });
 
   it("위조·형식 오류는 null", () => {
-    const [payload] = signChallenge(EMAIL, HASH).split(".");
+    const [payload] = signChallenge(HASH).split(".");
     expect(verifyChallenge(`${payload}.deadbeef`)).toBeNull();
     expect(verifyChallenge("서명없음")).toBeNull();
     expect(verifyChallenge("")).toBeNull();
@@ -38,7 +42,7 @@ describe("OTP 챌린지", () => {
    * 통하면 문자를 받지 않고도 설문에 들어갈 수 있다.
    */
   it("챌린지는 학생 토큰·관리자 세션으로 통하지 않는다", () => {
-    const challenge = signChallenge(EMAIL, HASH);
+    const challenge = signChallenge(HASH, EMAIL);
     expect(verifyMemberToken(challenge)).toBeNull();
     expect(verifySession(challenge)).toBeNull();
   });

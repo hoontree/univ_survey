@@ -2,8 +2,8 @@
  * 본인 확인 시도 제한 — 인스턴스 메모리 기반 슬라이딩 윈도우.
  *
  * Cloud Run은 인스턴스가 여러 개일 수 있고 min-instances=0이라 이건 완벽한
- * 방벽이 아니라 **속도 제한**이다. 그래도 아이디를 아는 사람이 번호(10⁸)를
- * 긁어보는 시도를 크게 늦추고, 비용이 0이라 둘 이유가 충분하다.
+ * 방벽이 아니라 **속도 제한**이다. 그래도 번호(10⁸)를 긁어 명단에 있는
+ * 사람을 찾아내려는 시도를 크게 늦추고, 비용이 0이라 둘 이유가 충분하다.
  * Firestore 카운터는 쓰기 비용과 정리 부담 때문에 쓰지 않는다.
  */
 export interface RateLimitRule {
@@ -12,7 +12,7 @@ export interface RateLimitRule {
   windowMs: number;
 }
 
-export const EMAIL_RULE: RateLimitRule = { limit: 5, windowMs: 10 * 60 * 1000 };
+export const PHONE_RULE: RateLimitRule = { limit: 5, windowMs: 10 * 60 * 1000 };
 export const IP_RULE: RateLimitRule = { limit: 20, windowMs: 10 * 60 * 1000 };
 
 export class RateLimiter {

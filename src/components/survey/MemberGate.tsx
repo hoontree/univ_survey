@@ -24,6 +24,12 @@ interface Challenge {
   config: FirebaseWebConfig;
 }
 
+/** 한 번호에 여러 명이 걸렸을 때 고르는 후보 (이름은 가려서 온다) */
+interface Candidate {
+  name: string;
+  challenge: string;
+}
+
 /** Firebase 오류 코드를 학생이 읽을 말로 */
 function authError(error: unknown, fallback: string): string {
   const code =
@@ -48,25 +54,27 @@ function authError(error: unknown, fallback: string): string {
 }
 
 /**
- * 인클래스 본인 확인 게이트 — 두 단계다.
+ * 본인 확인 게이트 — 휴대폰번호 하나로 시작한다.
  *
- *  1. 아이디 + 휴대폰번호를 명단과 대조(`/api/members/verify`, 차감 없음)
- *  2. 그 번호로 온 인증번호를 입력(`/api/members/confirm`) → 학생 토큰 발급
+ *  1. 번호를 인클래스 명단과 대조(`/api/members/verify`, 차감 없음) → 문자 발송
+ *  2. 인증번호 확인(`/api/members/confirm`) → 학생 토큰 발급
+ *  3. (드묾) 한 번호에 형제자매가 걸려 있으면 본인을 고른다
  *
  * 통과하면 토큰이 sessionStorage에 저장되어 다른 계열 설문에서 다시 확인할
  * 필요가 없다. 사용 횟수 차감은 결과 발급 시점에 한 번 일어난다.
  */
 export function MemberGate({ meta, notice, onPass }: MemberGateProps) {
-  const [step, setStep] = useState<"identity" | "code">("identity");
-  const [email, setEmail] = useState("");
+  const [step, setStep] = useState<"phone" | "code" | "choose">("phone");
   const [phone, setPhone] = useState("");
   const [code, setCode] = useState("");
   const [busy, setBusy] = useState(false);
   const [cooldown, setCooldown] = useState(0);
   const [error, setError] = useState<string | null>(null);
   const [challenge, setChallenge] = useState<Challenge | null>(null);
+  const [candidates, setCandidates] = useState<Candidate[]>([]);
 
   const confirmationRef = useRef<ConfirmationResult | null>(null);
+  const idTokenRef = useRef<string | null>(null);
   const recaptchaRef = useRef<HTMLDivElement | null>(null);
 
   useEffect(() => {
@@ -78,12 +86,22 @@ export function MemberGate({ meta, notice, onPass }: MemberGateProps) {
   // 화면을 떠날 때 reCAPTCHA 위젯을 정리한다
   useEffect(() => () => clearRecaptcha(), []);
 
-  const backToIdentity = () => {
+  const backToPhone = () => {
     confirmationRef.current = null;
+    idTokenRef.current = null;
     clearRecaptcha();
     setCode("");
+    setCandidates([]);
     setCooldown(0);
-    setStep("identity");
+    setStep("phone");
+  };
+
+  /** 확인이 끝났다 — 토큰을 저장하고 설문으로 */
+  const pass = async (token: string) => {
+    await signOutQuietly();
+    clearRecaptcha();
+    saveMemberToken(token);
+    onPass(token);
   };
 
   const requestCode = async (config: FirebaseWebConfig) => {
@@ -94,9 +112,9 @@ export function MemberGate({ meta, notice, onPass }: MemberGateProps) {
   };
 
   /** 1단계 — 명단 대조 후 곧바로 문자 발송 */
-  const submitIdentity = async () => {
-    if (!email.trim() || !phone.trim()) {
-      setError("아이디와 휴대폰번호를 모두 입력해 주세요.");
+  const submitPhone = async () => {
+    if (!phone.trim()) {
+      setError("휴대폰번호를 입력해 주세요.");
       return;
     }
     setBusy(true);
@@ -105,7 +123,7 @@ export function MemberGate({ meta, notice, onPass }: MemberGateProps) {
       const res = await fetch("/api/members/verify", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ email, phone }),
+        body: JSON.stringify({ phone }),
       });
       const data = await res.json();
       if (!data.ok) {
@@ -135,7 +153,31 @@ export function MemberGate({ meta, notice, onPass }: MemberGateProps) {
     }
   };
 
-  /** 2단계 — 인증번호 확인 → 학생 토큰 */
+  /** 검증된 ID 토큰을 서버에 제출 — 후보 선택 때도 같은 토큰을 다시 쓴다 */
+  const submitToServer = async (challengeValue: string) => {
+    const idToken = idTokenRef.current;
+    if (!idToken) return;
+    const res = await fetch("/api/members/confirm", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ challenge: challengeValue, idToken }),
+    });
+    const data = await res.json();
+    if (data.ok) {
+      await pass(data.token);
+      return;
+    }
+    if (data.reason === "choose") {
+      setCandidates(data.options ?? []);
+      setStep("choose");
+      setError(null);
+      return;
+    }
+    setError(data.error ?? "인증에 실패했어요. 다시 시도해 주세요.");
+    if (data.reason === "challenge_expired") backToPhone();
+  };
+
+  /** 2단계 — 인증번호 확인 */
   const submitCode = async () => {
     const confirmation = confirmationRef.current;
     if (!confirmation || !challenge) return;
@@ -147,24 +189,23 @@ export function MemberGate({ meta, notice, onPass }: MemberGateProps) {
     setError(null);
     try {
       const credential = await confirmation.confirm(code);
-      const idToken = await credential.user.getIdToken();
-      const res = await fetch("/api/members/confirm", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ challenge: challenge.challenge, idToken }),
-      });
-      const data = await res.json();
-      await signOutQuietly();
-      if (!data.ok) {
-        setError(data.error ?? "인증에 실패했어요. 다시 시도해 주세요.");
-        if (data.reason === "challenge_expired") backToIdentity();
-        return;
-      }
-      clearRecaptcha();
-      saveMemberToken(data.token);
-      onPass(data.token);
+      idTokenRef.current = await credential.user.getIdToken();
+      await submitToServer(challenge.challenge);
     } catch (err) {
       setError(authError(err, "인증에 실패했어요. 다시 시도해 주세요."));
+    } finally {
+      setBusy(false);
+    }
+  };
+
+  /** 3단계 — 후보 중 본인 선택 */
+  const choose = async (candidate: Candidate) => {
+    setBusy(true);
+    setError(null);
+    try {
+      await submitToServer(candidate.challenge);
+    } catch {
+      setError("인증에 실패했어요. 다시 시도해 주세요.");
     } finally {
       setBusy(false);
     }
@@ -194,7 +235,20 @@ export function MemberGate({ meta, notice, onPass }: MemberGateProps) {
     gap: 12,
   } as const;
 
-  const fieldStyle = { ...inputStyle, width: "100%", padding: "14px 16px", textAlign: "center" } as const;
+  const fieldStyle = {
+    ...inputStyle,
+    width: "100%",
+    padding: "14px 16px",
+    textAlign: "center",
+  } as const;
+
+  const footNoteStyle = {
+    margin: "24px auto 0",
+    maxWidth: 380,
+    fontSize: "var(--text-xs)",
+    lineHeight: "var(--leading-relaxed)",
+    color: "var(--text-ghost)",
+  } as const;
 
   const errorLine = error && (
     <p
@@ -210,18 +264,20 @@ export function MemberGate({ meta, notice, onPass }: MemberGateProps) {
     </p>
   );
 
+  const icon = step === "phone" ? "🪪" : step === "code" ? "📲" : "🙋";
+
   return (
     <div className="univ-question-enter" style={{ marginTop: 48, textAlign: "center" }}>
       <span style={{ fontSize: 40 }} aria-hidden>
-        {step === "identity" ? "🪪" : "📲"}
+        {icon}
       </span>
 
-      {step === "identity" ? (
+      {step === "phone" && (
         <>
           <h1 style={headingStyle}>본인 확인이 필요해요</h1>
           <p style={bodyStyle}>
-            {meta.name} 설문은 인클래스에 등록된 우주설 수업 수강생이 이용할 수 있어요. 인클래스
-            아이디와 가입할 때 쓴 휴대폰번호를 입력하면 그 번호로 인증번호를 보내드려요.{" "}
+            {meta.name} 설문은 인클래스에 등록된 우주설 수업 수강생이 이용할 수 있어요. 인클래스에
+            등록한 휴대폰번호를 입력하면 그 번호로 인증번호를 보내드려요.{" "}
             <strong style={{ color: "var(--text-primary)" }}>2회</strong>까지 추천을 받을 수 있습니다.
           </p>
 
@@ -241,25 +297,10 @@ export function MemberGate({ meta, notice, onPass }: MemberGateProps) {
           <form
             onSubmit={(e) => {
               e.preventDefault();
-              submitIdentity();
+              submitPhone();
             }}
             style={formStyle}
           >
-            <input
-              value={email}
-              onChange={(e) => {
-                setEmail(e.target.value);
-                setError(null);
-              }}
-              placeholder="인클래스 아이디"
-              autoFocus
-              autoComplete="username"
-              autoCapitalize="none"
-              spellCheck={false}
-              inputMode="email"
-              aria-label="인클래스 아이디(이메일)"
-              style={fieldStyle}
-            />
             <input
               value={phone}
               onChange={(e) => {
@@ -267,6 +308,7 @@ export function MemberGate({ meta, notice, onPass }: MemberGateProps) {
                 setError(null);
               }}
               placeholder="휴대폰번호"
+              autoFocus
               autoComplete="tel"
               inputMode="numeric"
               aria-label="휴대폰번호"
@@ -278,21 +320,14 @@ export function MemberGate({ meta, notice, onPass }: MemberGateProps) {
             </Button>
           </form>
 
-          <p
-            style={{
-              margin: "24px auto 0",
-              maxWidth: 380,
-              fontSize: "var(--text-xs)",
-              lineHeight: "var(--leading-relaxed)",
-              color: "var(--text-ghost)",
-            }}
-          >
-            아이디는 <b>@inclass.co.kr</b> 앞부분만 입력해도 돼요. 본인 번호가 등록돼 있지 않다면
-            학부모님 번호로도 확인할 수 있어요(그 번호로 문자가 갑니다). 입력한 번호는 본인 확인에만
-            쓰고 명단에는 해시로만 남습니다.
+          <p style={footNoteStyle}>
+            본인 번호가 인클래스에 등록돼 있지 않다면 학부모님 번호로도 확인할 수 있어요(그 번호로
+            문자가 갑니다). 입력한 번호는 본인 확인에만 쓰고 명단에는 해시로만 남습니다.
           </p>
         </>
-      ) : (
+      )}
+
+      {step === "code" && (
         <>
           <h1 style={headingStyle}>인증번호를 입력해 주세요</h1>
           <p style={bodyStyle}>
@@ -339,27 +374,52 @@ export function MemberGate({ meta, notice, onPass }: MemberGateProps) {
             <Button variant="ghost" size="sm" disabled={busy || cooldown > 0} onClick={resend}>
               {cooldown > 0 ? `재전송 (${cooldown}초)` : "인증번호 재전송"}
             </Button>
-            <Button variant="ghost" size="sm" disabled={busy} onClick={backToIdentity}>
+            <Button variant="ghost" size="sm" disabled={busy} onClick={backToPhone}>
               번호 바꾸기
             </Button>
           </div>
 
-          <p
-            style={{
-              margin: "24px auto 0",
-              maxWidth: 380,
-              fontSize: "var(--text-xs)",
-              lineHeight: "var(--leading-relaxed)",
-              color: "var(--text-ghost)",
-            }}
-          >
+          <p style={footNoteStyle}>
             문자가 오지 않으면 번호를 다시 확인하거나 잠시 뒤 재전송을 눌러 주세요. 계속 안 되면
             선생님께 알려주세요.
           </p>
         </>
       )}
 
-      {/* invisible reCAPTCHA가 붙는 자리 — 두 단계 모두에서 살아 있어야 한다 */}
+      {step === "choose" && (
+        <>
+          <h1 style={headingStyle}>본인을 골라 주세요</h1>
+          <p style={bodyStyle}>이 번호로 등록된 학생이 여러 명이에요. 설문을 볼 학생을 고르세요.</p>
+
+          <div style={formStyle}>
+            {candidates.map((candidate) => (
+              <Button
+                key={candidate.challenge}
+                variant="secondary"
+                track={meta.id}
+                disabled={busy}
+                fullWidth
+                onClick={() => choose(candidate)}
+              >
+                {candidate.name}
+              </Button>
+            ))}
+            {errorLine}
+          </div>
+
+          <div style={{ margin: "16px auto 0" }}>
+            <Button variant="ghost" size="sm" disabled={busy} onClick={backToPhone}>
+              처음부터 다시
+            </Button>
+          </div>
+
+          <p style={footNoteStyle}>
+            이름이 가려져 있어도 순서는 그대로예요. 누구인지 모르겠으면 선생님께 문의해 주세요.
+          </p>
+        </>
+      )}
+
+      {/* invisible reCAPTCHA가 붙는 자리 — 모든 단계에서 살아 있어야 한다 */}
       <div ref={recaptchaRef} />
     </div>
   );

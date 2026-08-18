@@ -274,6 +274,20 @@ export function evaluateMember(
   return { ok: true, remaining: doc.maxUses - doc.uses, name: doc.name };
 }
 
+/**
+ * 화면에 띄울 이름을 가린다 — `김민수` → `김*수`.
+ *
+ * 한 번호에 여러 명이 걸렸을 때(형제자매가 같은 학부모 번호로 등록된 경우)
+ * 본인을 고르게 하려면 이름을 보여줘야 하는데, 그 번호를 들고 있는 사람에게도
+ * 전체 이름까지 알려줄 이유는 없다.
+ */
+export function maskName(name: string): string {
+  const value = (name ?? "").trim();
+  if (value.length <= 1) return value;
+  if (value.length === 2) return `${value[0]}*`;
+  return `${value[0]}${"*".repeat(value.length - 2)}${value[value.length - 1]}`;
+}
+
 /* ── Firestore ── */
 
 /** 엑셀 업로드 반영 — 병합(추가·갱신만). 파일에 없는 사람은 건드리지 않는다. */
@@ -309,18 +323,56 @@ export async function upsertMembers(
   return { added: plan.creates.length, updated: plan.updates.length };
 }
 
-/** 설문 진입 게이트 — 차감 없음 */
-export async function verifyMember(rawEmail: string, rawPhone: string): Promise<MemberCheck> {
-  const email = normalizeEmail(rawEmail);
-  const phone = normalizePhone(rawPhone);
-  if (!email || !phone) return { ok: false, reason: "invalid" };
+export interface PhoneMatch {
+  email: string;
+  name: string;
+  remaining: number;
+}
 
-  const snap = await getDb().collection(COLLECTION).doc(email).get();
-  if (!snap.exists) return { ok: false, reason: "invalid" };
-  return evaluateMember(snap.data() as MemberDoc, {
-    phoneHash: hashPhone(phone),
-    keyFp: keyFingerprint(),
-  });
+export type PhoneCheck =
+  | { ok: true; matches: PhoneMatch[] }
+  | { ok: false; reason: "invalid" | "exhausted" | "stale" };
+
+/**
+ * 설문 진입 게이트 — 번호 하나로 명단을 조회한다(차감 없음).
+ *
+ * 문서 id는 여전히 이메일이지만 학생은 번호만 입력하므로, 번호 해시로 **역방향
+ * 조회**한다. 본인 번호 열과 학부모 번호 열을 각각 봐야 해서 질의가 두 번이다
+ * (Firestore는 서로 다른 필드의 OR를 한 번에 못 본다).
+ *
+ * 한 번호에 여러 명이 걸릴 수 있다 — 형제자매가 같은 학부모 번호로 등록된
+ * 경우다. 그래서 한 명이 아니라 **후보 목록**을 돌려주고, 누구인지는 문자
+ * 인증을 마친 뒤에 고르게 한다.
+ */
+export async function verifyPhone(rawPhone: string): Promise<PhoneCheck> {
+  const phone = normalizePhone(rawPhone);
+  if (!phone) return { ok: false, reason: "invalid" };
+
+  const phoneHash = hashPhone(phone);
+  const collection = getDb().collection(COLLECTION);
+  const snaps = await Promise.all([
+    collection.where("phoneHash", "==", phoneHash).get(),
+    collection.where("parentPhoneHash", "==", phoneHash).get(),
+  ]);
+
+  const docs = new Map<string, MemberDoc>();
+  for (const snap of snaps) {
+    for (const doc of snap.docs) docs.set(doc.id, doc.data() as MemberDoc);
+  }
+  if (docs.size === 0) return { ok: false, reason: "invalid" };
+
+  const keyFp = keyFingerprint();
+  const matches: PhoneMatch[] = [];
+  let stale = false;
+  for (const [email, doc] of docs) {
+    const result = evaluateMember(doc, { phoneHash, keyFp });
+    if (result.ok) matches.push({ email, name: doc.name, remaining: result.remaining });
+    else if (result.reason === "stale") stale = true;
+  }
+
+  if (matches.length > 0) return { ok: true, matches };
+  // 번호는 맞았는데 아무도 못 쓰는 상태 — 이유를 구분해 알려줘도 된다
+  return { ok: false, reason: stale ? "stale" : "exhausted" };
 }
 
 /**

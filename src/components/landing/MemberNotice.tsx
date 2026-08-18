@@ -36,8 +36,8 @@ export function MemberNotice() {
             }}
           >
             <strong style={{ color: "var(--text-primary)" }}>인클래스에 등록된 우주설 수업
-            수강생</strong>이 이용할 수 있어요. 설문을 시작할 때 인클래스 아이디와 가입할 때 쓴
-            휴대폰번호를 입력하면 <strong style={{ color: "var(--text-primary)" }}>그 번호로
+            수강생</strong>이 이용할 수 있어요. 설문을 시작할 때 인클래스에 등록한 휴대폰번호를
+            입력하면 <strong style={{ color: "var(--text-primary)" }}>그 번호로
             인증번호 문자</strong>가 가고, 확인이 끝나면{" "}
             <strong style={{ color: "var(--text-primary)" }}>2회</strong>까지 추천을 받을 수
             있습니다.
