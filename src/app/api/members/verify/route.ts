@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
-import { signMemberToken } from "@/lib/member-session";
-import { normalizeEmail, verifyMember } from "@/lib/members";
+import { firebaseWebConfig } from "@/lib/firebase-config";
+import { hashPhone, normalizeEmail, normalizePhone, verifyMember } from "@/lib/members";
+import { signChallenge } from "@/lib/otp-challenge";
 import { EMAIL_RULE, IP_RULE, RateLimiter, clientIp } from "@/lib/rate-limit";
 
 export const runtime = "nodejs";
@@ -14,8 +15,12 @@ const limiter = new RateLimiter();
 const GENERIC = "아이디 또는 휴대폰번호가 일치하지 않아요. 다시 확인해 주세요.";
 
 /**
- * 설문 진입 게이트 — 인클래스 명단과 대조하고, 통과하면 학생 토큰을 발급한다.
- * 사용 횟수 차감은 여기서 하지 않는다(결과 발급 시점에 한 번).
+ * 본인 확인 1단계 — 인클래스 명단과 대조한다. 통과해도 아직 설문에 들어갈 수
+ * 없다. 여기서 나가는 건 **챌린지**뿐이고, 학생 토큰은 그 번호로 온 문자를
+ * 실제로 받아 `/api/members/confirm`을 통과해야 발급된다.
+ *
+ * 명단 대조를 먼저 하는 이유가 곧 이 순서의 요점이다 — 명단에 없는 번호로는
+ * 문자가 한 통도 나가지 않는다.
  *
  * 이메일·번호를 로그에 남기지 않는다.
  */
@@ -25,6 +30,20 @@ export async function POST(request: Request) {
     body = await request.json();
   } catch {
     return NextResponse.json({ error: "잘못된 요청 본문" }, { status: 400 });
+  }
+
+  // 설정이 빠졌으면 **문을 닫는다.** OTP를 건너뛰고 통과시키는 폴백을 두면
+  // 환경변수 하나 빠뜨린 배포가 곧 인증 우회가 된다.
+  const firebase = firebaseWebConfig();
+  if (!firebase) {
+    return NextResponse.json(
+      {
+        ok: false,
+        reason: "otp_unavailable",
+        error: "지금은 본인 확인을 할 수 없어요. 선생님께 알려주세요.",
+      },
+      { status: 503 },
+    );
   }
 
   const now = Date.now();
@@ -45,9 +64,10 @@ export async function POST(request: Request) {
     return NextResponse.json({ ok: false, reason: "invalid", error: GENERIC });
   };
 
-  if (!email || typeof body.phone !== "string") return fail();
+  const phone = normalizePhone(body.phone);
+  if (!email || !phone) return fail();
 
-  const result = await verifyMember(email, body.phone);
+  const result = await verifyMember(email, phone);
   if (!result.ok) {
     if (result.reason === "exhausted") {
       // 여기까지 왔다는 건 번호가 맞았다는 뜻이라 사실대로 알려줘도 된다
@@ -71,7 +91,8 @@ export async function POST(request: Request) {
   limiter.clear(emailKey);
   return NextResponse.json({
     ok: true,
-    token: signMemberToken(email),
+    challenge: signChallenge(email, hashPhone(phone), now),
+    firebase,
     remaining: result.remaining,
     name: result.name,
   });

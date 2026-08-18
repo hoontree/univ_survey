@@ -7,6 +7,12 @@ substitutions:
   _REGION: asia-northeast3
   _SERVICE: universeol
   _RUNTIME_SA: universeol-run@universeol.iam.gserviceaccount.com
+  # Firebase 웹 설정(전화 인증용). **시크릿이 아니다** — 브라우저에 그대로
+  # 나가는 프로젝트 식별자이므로 Secret Manager가 아니라 여기에 둔다.
+  # 대신 정적 번들에 박지 않고, 명단 대조를 통과한 응답으로만 내려보낸다.
+  _FIREBASE_API_KEY: AIzaSyB5QMKCDoSHbHljehbkbDFkNFdymoDA-IA
+  _FIREBASE_AUTH_DOMAIN: universeol.firebaseapp.com
+  _FIREBASE_WEB_APP_ID: "1:588223559887:web:a16f6600f9264a8bb55fba"
 
 images:
   - "${_REGION}-docker.pkg.dev/${PROJECT_ID}/cloud-run-source-deploy/${_SERVICE}:${SHORT_SHA}"
@@ -40,7 +46,7 @@ steps:
       - "--region=${_REGION}"
       - "--platform=managed"
       - "--service-account=${_RUNTIME_SA}"
-      - "--set-env-vars=GOOGLE_CLOUD_PROJECT=${PROJECT_ID}"
+      - "--set-env-vars=GOOGLE_CLOUD_PROJECT=${PROJECT_ID},FIREBASE_API_KEY=${_FIREBASE_API_KEY},FIREBASE_AUTH_DOMAIN=${_FIREBASE_AUTH_DOMAIN},FIREBASE_WEB_APP_ID=${_FIREBASE_WEB_APP_ID}"
       - "--set-secrets=ADMIN_TOKEN=universeol-admin-token:latest"
       - "--min-instances=0"
       - "--max-instances=10"
