@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { EMAIL_RULE, RateLimiter, clientIp } from "@/lib/rate-limit";
+import { PHONE_RULE, RateLimiter, clientIp } from "@/lib/rate-limit";
 
 const rule = { limit: 3, windowMs: 1000 };
 
@@ -43,7 +43,7 @@ describe("RateLimiter", () => {
   });
 
   it("기본 규칙은 10분에 5회", () => {
-    expect(EMAIL_RULE).toEqual({ limit: 5, windowMs: 600_000 });
+    expect(PHONE_RULE).toEqual({ limit: 5, windowMs: 600_000 });
   });
 });
 

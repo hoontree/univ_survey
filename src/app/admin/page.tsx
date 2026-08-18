@@ -190,8 +190,8 @@ function MemberSection({ members }: { members: MemberRecord[] }) {
       </header>
       <p style={{ margin: "6px 0 0", fontSize: "var(--text-xs)", color: "var(--text-faint)" }}>
         인클래스에서 내려받은 구성원 목록 엑셀을 그대로 올리면 됩니다. 이미 있는 구성원은
-        정보만 갱신되고, 없는 구성원은 지워지지 않아요. 학생은 아이디(이메일)와 본인 또는
-        학부모 휴대폰번호로 본인 확인을 합니다.
+        정보만 갱신되고, 없는 구성원은 지워지지 않아요. 학생은 본인 또는 학부모 휴대폰번호로
+        문자 인증을 해서 들어옵니다.
       </p>
 
       {stale > 0 && (
