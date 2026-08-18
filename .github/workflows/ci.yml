@@ -2,7 +2,8 @@ name: CI
 
 # PR 전용. `check`/`build` 는 main 의 **필수 상태 체크**(브랜치 보호, strict)라
 # 모든 머지를 게이트한다. 머지 후 `push: main` 에서 다시 돌릴 이유는 없다 —
-# 머지 커밋의 트리는 CI 가 이미 검사한 것과 같다. 배포는 별개로 Cloud Build
+# 보호가 strict 라 브랜치는 머지 직전 main 과 같은 자리에 있고, squash 머지 커밋의
+# 트리는 CI 가 이미 검사한 것과 같다. 배포는 별개로 Cloud Build
 # 트리거(cloudbuild.yaml)가 main 푸시에서 처리한다.
 on:
   pull_request:

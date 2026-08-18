@@ -174,6 +174,27 @@ PR 열기 → CI (check·build) 초록 → GitHub auto-merge → main 푸시 →
 
 **main 브랜치 보호**: 필수 체크 `check`·`build`(strict — main이 앞서면 브랜치 갱신 후 재검사), `enforce_admins`, 대화 해결 필수, force push·삭제 금지. 리뷰 승인은 필수가 아닙니다(1인 개발).
 
+#### 머지 방식은 squash 하나뿐
+
+레포는 **squash만 허용**합니다(`allow_squash_merge=true` / `allow_merge_commit=false` / `allow_rebase_merge=false`). PR 하나가 main에 커밋 하나로 앉으므로 main 이력이 PR 목록과 1:1로 맞고, "머지 커밋의 트리는 CI가 검사한 것과 같다"는 `ci.yml`의 전제도 참이 됩니다(보호가 strict라 브랜치는 머지 직전 main과 같은 자리에 있습니다). 방식을 하나로 좁힌 것은 PR마다 고르게 두면 한 번 잘못 고른 merge 커밋이 그대로 남기 때문입니다.
+
+`auto-merge.yml`의 `gh pr merge --squash`가 이 설정과 **함께 움직여야 합니다.** `gh pr merge`는 비대화형에서 방식 플래그를 반드시 요구하는데, 레포가 허용하지 않는 방식을 적으면 이 워크플로만 조용히 실패합니다 — PR은 머지되지 않고 화면에는 "CI 대기 중"조차 남지 않습니다.
+
+대가는 **스택 브랜치**입니다. A가 squash되면 그 커밋들이 다른 SHA로 main에 앉으므로, A 위에 쌓은 B는 `git rebase --onto main <A의 마지막 커밋> B`로 옮겨야 합니다.
+
+#### 머지된 워크트리·브랜치 자동 정리
+
+원격 브랜치는 GitHub이 지웁니다(`delete_branch_on_merge=true`). 남는 **로컬** 브랜치와 `.claude/worktrees/` 아래 작업 디렉터리는 GitHub이 건드릴 수 없으므로 `scripts/prune_merged_worktrees.sh`가 정리합니다 — `.claude/settings.json`의 SessionStart hook이 세션마다 `--apply`로 부릅니다. 무엇이 지워질지 먼저 보려면 플래그 없이 직접 실행하세요(기본은 보고만 합니다).
+
+```bash
+./scripts/prune_merged_worktrees.sh          # 보고만
+./scripts/prune_merged_worktrees.sh --apply  # 실제로 삭제
+```
+
+**머지 판정을 `gh`에 묻는 것이 이 스크립트의 존재 이유입니다.** squash 커밋은 브랜치 커밋과 SHA가 다르므로 브랜치가 main의 조상이 되지 않고, 흔한 `git branch --merged main` 관용구는 이 저장소에서 영원히 아무것도 찾지 못합니다 — 그리고 그 실패가 조용합니다. 같은 이유로 브랜치 삭제도 `-d`가 아니라 `-D`입니다.
+
+삭제는 되돌릴 수 없으므로 가드 여섯은 힌트가 아니라 통과 조건입니다: `.claude/worktrees/` 범위 · 자기 자신 제외 · locked 제외 · detached 제외 · 미커밋 변경 없음 · **로컬 tip == 머지된 PR의 `headRefOid`**. 마지막이 실질적인 마지막 방어선입니다 — 머지 이후에 얹은 커밋은 squash에 담기지 않았으므로 지우면 reflog 말고는 복구 경로가 없습니다.
+
 #### 러너 스위치
 
 두 CI 잡의 `runs-on`은 레포 Actions 변수 `CI_RUNNER` **하나만** 봅니다. 변수가 없으면 `ubuntu-latest`(GitHub 호스티드)로 떨어지므로 **되돌린 상태가 기본값**입니다. 워크플로 실행이 시작될 때 읽히니 토글에 커밋도 PR도 필요 없습니다.
