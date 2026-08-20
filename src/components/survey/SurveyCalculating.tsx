@@ -11,7 +11,7 @@ interface SurveyCalculatingProps {
 }
 
 /**
- * 마지막 문항 제출 후 결과 발급 전, 채점 로직이 돌아가는 듯한 계산 화면.
+ * 마지막 문항 제출 후 결과 발급 전, AI 추천 모델이 돌아가는 듯한 분석 화면.
  * 진행 바는 스텝 단위로 움직였다 멈췄다 하며 약 4초에 걸쳐 100%에 도달한다.
  */
 export function SurveyCalculating({ progress, moveMs, label, track }: SurveyCalculatingProps) {
@@ -37,7 +37,7 @@ export function SurveyCalculating({ progress, moveMs, label, track }: SurveyCalc
           color: "var(--text-strong)",
         }}
       >
-        결과를 계산하고 있어요
+        AI가 결과를 분석하고 있어요
       </h1>
 
       <p
