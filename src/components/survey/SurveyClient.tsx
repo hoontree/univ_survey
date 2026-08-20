@@ -22,16 +22,16 @@ import type { Answers, TrackData } from "@/lib/types";
 const ADVANCE_DELAY_MS = 220;
 
 /**
- * 결과 계산 화면의 진행 바 타임라인. move(=바가 목표치까지 차오르는 시간) 뒤
- * hold(=멈춰 있는 시간)를 둬서 내부 로직이 단계별로 도는 듯한 멈칫거림을 만든다.
+ * 결과 분석 화면의 진행 바 타임라인. move(=바가 목표치까지 차오르는 시간) 뒤
+ * hold(=멈춰 있는 시간)를 둬서 AI 모델이 단계별로 추론하는 듯한 멈칫거림을 만든다.
  * move + hold 합계는 4000ms.
  */
 const CALC_STEPS = [
-  { to: 20, move: 300, hold: 250, label: "응답을 정리하고 있어요" },
-  { to: 44, move: 400, hold: 500, label: "강사 기준표와 대조하고 있어요" },
-  { to: 66, move: 350, hold: 600, label: "대학별 득표를 집계하고 있어요" },
+  { to: 20, move: 300, hold: 250, label: "응답 데이터를 정리하고 있어요" },
+  { to: 44, move: 400, hold: 500, label: "AI 추천 모델에 응답을 입력하고 있어요" },
+  { to: 66, move: 350, hold: 600, label: "대학별 적합도를 분석하고 있어요" },
   { to: 87, move: 350, hold: 450, label: "추천 순위를 정렬하고 있어요" },
-  { to: 100, move: 400, hold: 400, label: "추천 대학을 확정했어요" },
+  { to: 100, move: 400, hold: 400, label: "AI 추천을 확정했어요" },
 ] as const;
 
 const wait = (ms: number) => new Promise<void>((resolve) => setTimeout(resolve, ms));
@@ -303,7 +303,7 @@ export function SurveyClient({ track, meta }: { track: TrackData; meta: TrackMet
             disabled={finishing}
             trailingIcon={finishing ? undefined : isLast ? "🚀" : "→"}
           >
-            {finishing ? "결과 계산 중..." : isLast ? "결과 보기" : "다음"}
+            {finishing ? "AI 분석 중..." : isLast ? "결과 보기" : "다음"}
           </Button>
         ) : (
           <p style={{ margin: 0, fontSize: "var(--text-xs)", color: "var(--text-faint)" }}>

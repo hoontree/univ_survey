@@ -275,7 +275,7 @@ function DemoResult() {
           color: "var(--text-muted)",
         }}
       >
-        10개 문항 중 <span style={{ color: "var(--text-strong)" }}>10개 기준 충족</span>
+        10개 문항 분석 · <span style={{ color: "var(--text-strong)" }}>AI 적합도 100%</span>
       </p>
       <div style={{ marginTop: 22, display: "flex", flexDirection: "column", gap: 8, textAlign: "left" }}>
         {DEMO_RESULT.map((row, i) => (
@@ -300,7 +300,7 @@ function DemoResult() {
               <span>
                 {i + 1} · {row.university} {row.winner && "👑"}
               </span>
-              <span style={{ color: "var(--text-muted)" }}>{row.votes}표 / 10</span>
+              <span style={{ color: "var(--text-muted)" }}>적합도 {row.votes * 10}%</span>
             </div>
             <div
               style={{

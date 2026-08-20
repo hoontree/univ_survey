@@ -18,7 +18,7 @@ interface RankingRowProps {
   defaultOpen?: boolean;
 }
 
-/** 결과 득표 랭킹 행 — 순위 배지, 대학명, 득표수, 득표 바. */
+/** AI 적합도 랭킹 행 — 순위 배지, 대학명, 적합도 점수, 적합도 바. */
 export function RankingRow({
   rank,
   university,
@@ -100,7 +100,7 @@ export function RankingRow({
               color: "var(--text-muted)",
             }}
           >
-            {votes}표 / {maxVotes}
+            적합도 {Math.round(pct)}%
           </span>
         </div>
         <ProgressBar

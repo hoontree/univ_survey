@@ -57,7 +57,8 @@ export function ResultClient({ track, meta }: { track: TrackData; meta: TrackMet
     );
   }
 
-  const topVotes = result.ranking[0]?.votes ?? 0;
+  const topMax = result.ranking[0]?.maxVotes ?? 0;
+  const topFit = topMax === 0 ? 0 : Math.round(((result.ranking[0]?.votes ?? 0) / topMax) * 100);
   const criteriaFor = (matched: string[]) =>
     track.questions.map((q) => ({ label: q.text, ok: matched.includes(q.id) }));
 
@@ -116,15 +117,15 @@ export function ResultClient({ track, meta }: { track: TrackData; meta: TrackMet
               color: "var(--text-muted)",
             }}
           >
-            {result.totalQuestions}개 문항 중{" "}
-            <span style={{ color: "var(--text-strong)" }}>{topVotes}개 기준 충족</span>
+            {result.totalQuestions}개 문항을 분석해{" "}
+            <span style={{ color: "var(--text-strong)" }}>AI 적합도 {topFit}%</span>로 추천했어요
             {result.winners.length > 1 && (
               <Chip style={{ marginLeft: 8 }}>공동 1위 {result.winners.length}곳</Chip>
             )}
           </p>
         </section>
 
-        {/* 전체 득표 랭킹 */}
+        {/* AI 적합도 랭킹 */}
         <section style={{ marginTop: 40 }}>
           <h2
             style={{
@@ -135,12 +136,12 @@ export function ResultClient({ track, meta }: { track: TrackData; meta: TrackMet
               color: "var(--text-strong)",
             }}
           >
-            전체 득표 랭킹
+            AI 적합도 랭킹
           </h2>
           <p
             style={{ margin: "4px 0 0", fontSize: "var(--text-xs)", color: "var(--text-faint)" }}
           >
-            대학을 누르면 문항별 충족 내역을 볼 수 있어요.
+            대학을 누르면 문항별 분석 내역을 볼 수 있어요.
           </p>
           <div
             style={{
@@ -226,8 +227,8 @@ export function ResultClient({ track, meta }: { track: TrackData; meta: TrackMet
             color: "var(--text-faint)",
           }}
         >
-          본 추천은 우주설 강사의 논술 기준표를 바탕으로 한 참고용 결과입니다. 최종
-          지원 전 반드시 각 대학 모집요강을 확인하세요.
+          본 추천은 우주설 강사의 논술 기준을 학습한 AI 추천 모델의 참고용 결과입니다.
+          최종 지원 전 반드시 각 대학 모집요강을 확인하세요.
         </p>
         <p
           style={{
