@@ -72,6 +72,8 @@ describe("computeResult — 규칙 단위", () => {
     expect(result.winners).not.toContain("C대");
     expect(result.excluded[0].eliminated).toBe(true);
     expect(result.excluded[0].votes).toBe(2);
+    expect(result.excluded[0].failedFilters).toEqual(["q2"]);
+    expect(result.ranking.every((s) => s.failedFilters.length === 0)).toBe(true);
   });
 
   it("동점 1위는 공동 1위로, 기준표 순서 유지", () => {
@@ -109,6 +111,56 @@ describe("computeResult — 실제 기준표", () => {
     expect(result.excluded.map((s) => s.university).sort()).toEqual(
       ["덕성여대 약대", "숙명여대 약대", "이화여대 약대"].sort(),
     );
+  });
+
+  it("약대 과탐 2과목 미응시: 고려대(세종) 등 과탐 필수 대학은 득표와 무관하게 지원 불가", () => {
+    const track = getTrack("pharmacy");
+    const sci = track.questions.find((q) => q.text.startsWith("수능 과학탐구 2과목"))!;
+    expect(sci.hardFilter).toBe(true);
+    expect(sci.filterLabel).toBe("과탐 2과목 응시 필요");
+    // 과탐만 "아니오"로 바꾸면, 나머지 답이 아무리 좋아도 제외돼야 한다
+    const baseline = computeResult(track, allAnswers(track, 1));
+    expect(baseline.ranking.map((s) => s.university)).toContain("고려대(세종) 약대");
+    const result = computeResult(track, allAnswers(track, 1, { [sci.id]: 2 }));
+    const excluded = result.excluded.map((s) => s.university).sort();
+    expect(excluded).toEqual(
+      ["가천대 약대", "가톨릭대 약대", "고려대(세종) 약대", "동국대 약대", "삼육대 약대"].sort(),
+    );
+    expect(result.winners).not.toContain("고려대(세종) 약대");
+    expect(result.ranking.map((s) => s.university)).not.toContain("고려대(세종) 약대");
+    const korea = result.excluded.find((s) => s.university === "고려대(세종) 약대")!;
+    expect(korea.failedFilters).toEqual([sci.id]);
+    // 제외돼도 득표는 그대로 집계된다(과탐 1표만 빠짐)
+    const koreaBefore = baseline.ranking.find((s) => s.university === "고려대(세종) 약대")!;
+    expect(korea.votes).toBe(koreaBefore.votes - 1);
+    // 과탐이 필수가 아닌 대학(2▲)은 그대로 추천 후보
+    expect(result.ranking.map((s) => s.university)).toContain("경희대 약대");
+  });
+
+  it("약대 남학생 + 과탐 미응시: 두 필터를 모두 미충족한 대학은 사유가 둘 다 기록된다", () => {
+    const track = getTrack("pharmacy");
+    const gender = track.questions.find((q) => q.text === "성별")!;
+    const sci = track.questions.find((q) => q.text.startsWith("수능 과학탐구 2과목"))!;
+    const result = computeResult(track, allAnswers(track, 1, { [gender.id]: 2, [sci.id]: 2 }));
+    const byName = Object.fromEntries(result.excluded.map((s) => [s.university, s.failedFilters]));
+    expect(byName["덕성여대 약대"]).toEqual([gender.id]);
+    expect(byName["고려대(세종) 약대"]).toEqual([sci.id]);
+    expect(Object.keys(byName)).toHaveLength(8);
+  });
+
+  it("의대 과탐 2과목 미응시: 가톨릭·가천·인하 의대 지원 불가", () => {
+    const track = getTrack("medical");
+    const sci = track.questions.find((q) => q.text.startsWith("수능 과학탐구 2과목"))!;
+    expect(sci.hardFilter).toBe(true);
+    const result = computeResult(track, allAnswers(track, 1, { [sci.id]: 2 }));
+    expect(result.excluded.map((s) => s.university).sort()).toEqual(
+      ["가천대 의대", "가톨릭 의대", "인하대 의대"].sort(),
+    );
+  });
+
+  it("비메디컬에는 과탐 하드 필터가 없다", () => {
+    const track = getTrack("nonmedical");
+    expect(track.questions.filter((q) => q.hardFilter).map((q) => q.text)).toEqual(["성별"]);
   });
 
   it("의대 수능최저 경계: 3합4(3번) 선택 시 성균관(1▲) 미득표, 가톨릭(3▲) 득표", () => {

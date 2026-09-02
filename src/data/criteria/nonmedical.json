@@ -749,7 +749,8 @@
           "mode": "lte"
         }
       },
-      "hardFilter": true
+      "hardFilter": true,
+      "filterLabel": "성별 조건"
     },
     {
       "id": "q10",

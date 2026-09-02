@@ -14,14 +14,21 @@ function passes(rule: VoteRule, answer: number): boolean {
  * 설문 응답을 대학별 득표로 집계한다.
  *
  * - 각 문항에서 규칙을 충족한 대학에 +1표
- * - hardFilter 문항(성별)을 미충족한 대학은 득표와 무관하게 추천에서 제외
+ * - hardFilter 문항(성별·과탐 2과목 응시)을 미충족한 대학은 득표와 무관하게 추천에서 제외
  * - 최다 득표 대학이 최종 추천(동점은 공동 1위), 동점 시 기준표 컬럼 순서 유지
  */
 export function computeResult(track: TrackData, answers: Answers): SurveyResult {
   const scores = new Map<string, UniversityScore>(
     track.universities.map((u) => [
       u,
-      { university: u, votes: 0, maxVotes: 0, matched: [], eliminated: false },
+      {
+        university: u,
+        votes: 0,
+        maxVotes: 0,
+        matched: [],
+        eliminated: false,
+        failedFilters: [],
+      },
     ]),
   );
 
@@ -42,6 +49,7 @@ export function computeResult(track: TrackData, answers: Answers): SurveyResult 
         score.matched.push(question.id);
       } else if (question.hardFilter) {
         score.eliminated = true;
+        score.failedFilters.push(question.id);
       }
     }
   }

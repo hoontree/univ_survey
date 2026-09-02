@@ -61,6 +61,16 @@ export function ResultClient({ track, meta }: { track: TrackData; meta: TrackMet
   const topFit = topMax === 0 ? 0 : Math.round(((result.ranking[0]?.votes ?? 0) / topMax) * 100);
   const criteriaFor = (matched: string[]) =>
     track.questions.map((q) => ({ label: q.text, ok: matched.includes(q.id) }));
+  // 지원 불가 대학을 미충족 하드 필터(성별·과탐 2과목)별로 묶는다. 문항 순서 유지.
+  const excludedGroups = track.questions
+    .filter((q) => q.hardFilter)
+    .map((q) => ({
+      label: q.filterLabel ?? q.text,
+      universities: result.excluded
+        .filter((s) => s.failedFilters.includes(q.id))
+        .map((s) => s.university),
+    }))
+    .filter((g) => g.universities.length > 0);
 
   return (
     <>
@@ -195,15 +205,29 @@ export function ResultClient({ track, meta }: { track: TrackData; meta: TrackMet
                 color: "rgba(254,205,211,.6)",
               }}
             >
-              성별 조건이 맞지 않아 추천에서 제외했어요.
+              지원 자격 조건이 맞지 않아 득표와 상관없이 추천에서 제외했어요.
             </p>
-            <div style={{ marginTop: 12, display: "flex", flexWrap: "wrap", gap: 8 }}>
-              {result.excluded.map((score) => (
-                <Chip key={score.university} variant="danger">
-                  {score.university}
-                </Chip>
-              ))}
-            </div>
+            {excludedGroups.map((group) => (
+              <div key={group.label} style={{ marginTop: 12 }}>
+                <p
+                  style={{
+                    margin: 0,
+                    fontSize: "var(--text-xs)",
+                    fontWeight: "var(--fw-bold)",
+                    color: "#fecdd3",
+                  }}
+                >
+                  {group.label}
+                </p>
+                <div style={{ marginTop: 6, display: "flex", flexWrap: "wrap", gap: 8 }}>
+                  {group.universities.map((university) => (
+                    <Chip key={university} variant="danger">
+                      {university}
+                    </Chip>
+                  ))}
+                </div>
+              </div>
+            ))}
           </section>
         )}
 
