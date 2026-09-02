@@ -113,54 +113,83 @@ describe("computeResult — 실제 기준표", () => {
     );
   });
 
-  it("약대 과탐 2과목 미응시: 고려대(세종) 등 과탐 필수 대학은 득표와 무관하게 지원 불가", () => {
+  it("약대 사탐 2과목: 과탐이 지원 자격인 대학은 득표와 무관하게 지원 불가", () => {
     const track = getTrack("pharmacy");
-    const sci = track.questions.find((q) => q.text.startsWith("수능 과학탐구 2과목"))!;
+    const sci = track.questions.find((q) => q.text.startsWith("수능 탐구 과목"))!;
     expect(sci.hardFilter).toBe(true);
-    expect(sci.filterLabel).toBe("과탐 2과목 응시 필요");
-    // 과탐만 "아니오"로 바꾸면, 나머지 답이 아무리 좋아도 제외돼야 한다
+    expect(sci.filterLabels).toEqual({
+      "1": "과탐 2과목 응시 필요",
+      "2": "과탐 1과목 이상 응시 필요",
+    });
+    // 탐구만 "사탐 2과목"으로 바꾸면, 나머지 답이 아무리 좋아도 제외돼야 한다
     const baseline = computeResult(track, allAnswers(track, 1));
     expect(baseline.ranking.map((s) => s.university)).toContain("고려대(세종) 약대");
-    const result = computeResult(track, allAnswers(track, 1, { [sci.id]: 2 }));
-    const excluded = result.excluded.map((s) => s.university).sort();
-    expect(excluded).toEqual(
-      ["가천대 약대", "가톨릭대 약대", "고려대(세종) 약대", "동국대 약대", "삼육대 약대"].sort(),
+    const result = computeResult(track, allAnswers(track, 1, { [sci.id]: 3 }));
+    expect(result.excluded.map((s) => s.university).sort()).toEqual(
+      ["가천대 약대", "가톨릭대 약대", "고려대(세종) 약대", "삼육대 약대"].sort(),
     );
     expect(result.winners).not.toContain("고려대(세종) 약대");
     expect(result.ranking.map((s) => s.university)).not.toContain("고려대(세종) 약대");
     const korea = result.excluded.find((s) => s.university === "고려대(세종) 약대")!;
     expect(korea.failedFilters).toEqual([sci.id]);
-    // 제외돼도 득표는 그대로 집계된다(과탐 1표만 빠짐)
+    // 제외돼도 득표는 그대로 집계된다(탐구 1표만 빠짐)
     const koreaBefore = baseline.ranking.find((s) => s.university === "고려대(세종) 약대")!;
     expect(korea.votes).toBe(koreaBefore.votes - 1);
-    // 과탐이 필수가 아닌 대학(2▲)은 그대로 추천 후보
+    // 탐구 선택이 지원 자격이 아닌 대학(3▲)은 그대로 추천 후보
     expect(result.ranking.map((s) => s.university)).toContain("경희대 약대");
+    expect(result.ranking.map((s) => s.university)).toContain("동국대 약대");
   });
 
-  it("약대 남학생 + 과탐 미응시: 두 필터를 모두 미충족한 대학은 사유가 둘 다 기록된다", () => {
+  it("약대 과탐 1과목 + 사탐 1과목: 과(2)를 요구하는 가천·고려대(세종)만 지원 불가", () => {
+    const track = getTrack("pharmacy");
+    const sci = track.questions.find((q) => q.text.startsWith("수능 탐구 과목"))!;
+    const result = computeResult(track, allAnswers(track, 1, { [sci.id]: 2 }));
+    expect(result.excluded.map((s) => s.university).sort()).toEqual(
+      ["가천대 약대", "고려대(세종) 약대"].sort(),
+    );
+    // 과(1)만 요구하는 가톨릭·삼육은 득표까지 한다
+    const catholic = result.ranking.find((s) => s.university === "가톨릭대 약대")!;
+    expect(catholic.matched).toContain(sci.id);
+  });
+
+  it("약대 남학생 + 사탐 2과목: 두 필터를 모두 미충족한 대학은 사유가 각각 기록된다", () => {
     const track = getTrack("pharmacy");
     const gender = track.questions.find((q) => q.text === "성별")!;
-    const sci = track.questions.find((q) => q.text.startsWith("수능 과학탐구 2과목"))!;
-    const result = computeResult(track, allAnswers(track, 1, { [gender.id]: 2, [sci.id]: 2 }));
+    const sci = track.questions.find((q) => q.text.startsWith("수능 탐구 과목"))!;
+    const result = computeResult(track, allAnswers(track, 1, { [gender.id]: 2, [sci.id]: 3 }));
     const byName = Object.fromEntries(result.excluded.map((s) => [s.university, s.failedFilters]));
     expect(byName["덕성여대 약대"]).toEqual([gender.id]);
     expect(byName["고려대(세종) 약대"]).toEqual([sci.id]);
-    expect(Object.keys(byName)).toHaveLength(8);
+    expect(Object.keys(byName)).toHaveLength(7);
   });
 
-  it("의대 과탐 2과목 미응시: 가톨릭·가천·인하 의대 지원 불가", () => {
+  it("의대 과탐 미달: 과(2)를 요구하는 가톨릭·가천·인하 의대 지원 불가", () => {
     const track = getTrack("medical");
-    const sci = track.questions.find((q) => q.text.startsWith("수능 과학탐구 2과목"))!;
+    const sci = track.questions.find((q) => q.text.startsWith("수능 탐구 과목"))!;
     expect(sci.hardFilter).toBe(true);
-    const result = computeResult(track, allAnswers(track, 1, { [sci.id]: 2 }));
-    expect(result.excluded.map((s) => s.university).sort()).toEqual(
-      ["가천대 의대", "가톨릭 의대", "인하대 의대"].sort(),
-    );
+    for (const answer of [2, 3]) {
+      const result = computeResult(track, allAnswers(track, 1, { [sci.id]: answer }));
+      expect(result.excluded.map((s) => s.university).sort()).toEqual(
+        ["가천대 의대", "가톨릭 의대", "인하대 의대"].sort(),
+      );
+    }
   });
 
-  it("비메디컬에는 과탐 하드 필터가 없다", () => {
+  it("비메디컬에는 탐구 하드 필터가 없다", () => {
     const track = getTrack("nonmedical");
     expect(track.questions.filter((q) => q.hardFilter).map((q) => q.text)).toEqual(["성별"]);
+  });
+
+  it("하드 필터 문항: 마지막 선택지가 아닌 임계값마다 제외 사유 라벨이 있다", () => {
+    for (const id of ["medical", "pharmacy", "nonmedical"] as const) {
+      for (const q of getTrack(id).questions.filter((q) => q.hardFilter)) {
+        const max = Math.max(...q.options.map((o) => o.value));
+        for (const rule of Object.values(q.rules)) {
+          expect(rule.mode).toBe("lte");
+          if (rule.threshold < max) expect(q.filterLabels?.[String(rule.threshold)]).toBeTruthy();
+        }
+      }
+    }
   });
 
   it("의대 수능최저 경계: 3합4(3번) 선택 시 성균관(1▲) 미득표, 가톨릭(3▲) 득표", () => {

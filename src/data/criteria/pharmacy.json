@@ -738,19 +738,25 @@
         }
       },
       "hardFilter": true,
-      "filterLabel": "성별 조건"
+      "filterLabels": {
+        "1": "여학생만 지원 가능"
+      }
     },
     {
       "id": "q10",
-      "text": "수능 과학탐구 2과목 응시자 입니까?",
+      "text": "수능 탐구 과목은 어떻게 응시합니까?",
       "options": [
         {
           "value": 1,
-          "label": "네"
+          "label": "과탐 2과목"
         },
         {
           "value": 2,
-          "label": "아니오"
+          "label": "과탐 1과목 + 사탐 1과목"
+        },
+        {
+          "value": 3,
+          "label": "사탐 2과목"
         }
       ],
       "rules": {
@@ -759,11 +765,11 @@
           "mode": "lte"
         },
         "가톨릭대 약대": {
-          "threshold": 1,
+          "threshold": 2,
           "mode": "lte"
         },
         "경희대 약대": {
-          "threshold": 2,
+          "threshold": 3,
           "mode": "lte"
         },
         "고려대(세종) 약대": {
@@ -771,48 +777,51 @@
           "mode": "lte"
         },
         "동국대 약대": {
-          "threshold": 1,
+          "threshold": 3,
           "mode": "lte"
         },
         "부산대 약대": {
-          "threshold": 2,
+          "threshold": 3,
           "mode": "lte"
         },
         "삼육대 약대": {
-          "threshold": 1,
+          "threshold": 2,
           "mode": "lte"
         },
         "성균관대 약대": {
-          "threshold": 2,
+          "threshold": 3,
           "mode": "lte"
         },
         "아주대 약대": {
-          "threshold": 2,
+          "threshold": 3,
           "mode": "lte"
         },
         "연세대 약대": {
-          "threshold": 2,
+          "threshold": 3,
           "mode": "lte"
         },
         "중앙대 약대": {
-          "threshold": 2,
+          "threshold": 3,
           "mode": "lte"
         },
         "덕성여대 약대": {
-          "threshold": 2,
+          "threshold": 3,
           "mode": "lte"
         },
         "숙명여대 약대": {
-          "threshold": 2,
+          "threshold": 3,
           "mode": "lte"
         },
         "이화여대 약대": {
-          "threshold": 2,
+          "threshold": 3,
           "mode": "lte"
         }
       },
       "hardFilter": true,
-      "filterLabel": "과탐 2과목 응시 필요"
+      "filterLabels": {
+        "1": "과탐 2과목 응시 필요",
+        "2": "과탐 1과목 이상 응시 필요"
+      }
     },
     {
       "id": "q11",

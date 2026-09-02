@@ -15,10 +15,13 @@ export interface Question {
   id: string;
   text: string;
   options: QuestionOption[];
-  /** true면 미충족 대학은 최종 추천에서 제외(지원 불가) — 성별·과탐 2과목 문항 */
+  /** true면 미충족 대학은 최종 추천에서 제외(지원 불가) — 성별·탐구 과목 문항 */
   hardFilter?: boolean;
-  /** hardFilter 문항의 제외 사유 라벨(결과 화면용). 예: "성별 조건", "과탐 2과목 응시 필요" */
-  filterLabel?: string;
+  /**
+   * hardFilter 문항의 임계값(N▲의 N, 문자열 키) → 제외 사유 라벨(결과 화면용).
+   * 예: { "1": "과탐 2과목 응시 필요", "2": "과탐 1과목 이상 응시 필요" }
+   */
+  filterLabels?: Record<string, string>;
   rules: Record<string, VoteRule>;
 }
 

@@ -750,7 +750,9 @@
         }
       },
       "hardFilter": true,
-      "filterLabel": "성별 조건"
+      "filterLabels": {
+        "1": "여학생만 지원 가능"
+      }
     },
     {
       "id": "q10",
