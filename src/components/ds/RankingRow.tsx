@@ -1,9 +1,16 @@
+import type { ReactNode } from "react";
 import { ProgressBar } from "./ProgressBar";
 import type { Accent } from "./tokens";
 
 export interface Criterion {
   label: string;
   ok: boolean;
+}
+
+export interface RankingBadge {
+  label: string;
+  /** warn = 눈에 띄어야 하는 조건("수능 전" 등) */
+  tone?: "default" | "warn";
 }
 
 interface RankingRowProps {
@@ -13,8 +20,12 @@ interface RankingRowProps {
   maxVotes: number;
   isWinner?: boolean;
   track: Accent;
+  /** 대학명 아래 작은 배지 — 고사일, 수능 전 여부 등 */
+  badges?: RankingBadge[];
   /** 주면 펼침 가능한 details로 렌더되어 문항별 ✓/✕를 보여줌 */
   criteria?: Criterion[];
+  /** details 맨 위에 붙는 부가 정보(출제 범위 등) */
+  detailLead?: ReactNode;
   defaultOpen?: boolean;
 }
 
@@ -26,7 +37,9 @@ export function RankingRow({
   maxVotes,
   isWinner = false,
   track,
+  badges,
   criteria,
+  detailLead,
   defaultOpen = false,
 }: RankingRowProps) {
   const pct = maxVotes === 0 ? 0 : (votes / maxVotes) * 100;
@@ -103,6 +116,34 @@ export function RankingRow({
             적합도 {Math.round(pct)}%
           </span>
         </div>
+        {badges && badges.length > 0 && (
+          <div
+            style={{
+              marginTop: "0.3rem",
+              display: "flex",
+              flexWrap: "wrap",
+              gap: "0.3rem",
+            }}
+          >
+            {badges.map((badge) => (
+              <span
+                key={badge.label}
+                style={{
+                  display: "inline-block",
+                  borderRadius: "var(--radius-full)",
+                  padding: "0.1rem 0.5rem",
+                  fontSize: "var(--text-xs)",
+                  fontWeight: "var(--fw-bold)",
+                  lineHeight: 1.5,
+                  background: badge.tone === "warn" ? "rgba(251,191,36,.14)" : "var(--w-06)",
+                  color: badge.tone === "warn" ? "#fde68a" : "var(--text-faint)",
+                }}
+              >
+                {badge.label}
+              </span>
+            ))}
+          </div>
+        )}
         <ProgressBar
           value={pct}
           track={track}
@@ -139,6 +180,18 @@ export function RankingRow({
           lineHeight: "var(--leading-relaxed)",
         }}
       >
+        {detailLead && (
+          <li
+            style={{
+              marginBottom: "0.35rem",
+              paddingBottom: "0.6rem",
+              borderBottom: "1px dashed var(--border-subtle)",
+              color: "var(--text-secondary)",
+            }}
+          >
+            {detailLead}
+          </li>
+        )}
         {criteria.map((c) => (
           <li key={c.label} style={{ display: "flex", gap: "0.5rem" }}>
             <span
