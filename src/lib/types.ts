@@ -15,8 +15,10 @@ export interface Question {
   id: string;
   text: string;
   options: QuestionOption[];
-  /** true면 미충족 대학은 최종 추천에서 제외(지원 불가) — 성별 문항 */
+  /** true면 미충족 대학은 최종 추천에서 제외(지원 불가) — 성별·과탐 2과목 문항 */
   hardFilter?: boolean;
+  /** hardFilter 문항의 제외 사유 라벨(결과 화면용). 예: "성별 조건", "과탐 2과목 응시 필요" */
+  filterLabel?: string;
   rules: Record<string, VoteRule>;
 }
 
@@ -39,6 +41,8 @@ export interface UniversityScore {
   matched: string[];
   /** 하드 필터 문항 미충족 → 지원 불가 */
   eliminated: boolean;
+  /** 미충족한 하드 필터 문항 id 목록 (eliminated 의 근거) */
+  failedFilters: string[];
 }
 
 export interface SurveyResult {

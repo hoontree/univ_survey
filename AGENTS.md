@@ -21,7 +21,7 @@
 - Firebase 웹 설정은 `NEXT_PUBLIC_`이나 정적 번들에 박지 않는다(`firebase-config.ts`). 환경변수가 없으면 `otp_unavailable`로 **막는다** — OTP를 건너뛰는 폴백을 만들면 설정 실수가 곧 인증 우회가 된다.
 - 관리자 인증은 아이디·비밀번호 로그인(세션 쿠키). 비밀번호는 `src/lib/password.ts`의 scrypt 해시로만 저장 — 평문을 코드·로그·Firestore에 남기지 말 것. 세션 서명 키는 `ADMIN_TOKEN`(재사용). 관리자 API는 `requireApiAdmin`(세션 쿠키 또는 Bearer)로 보호한다. 인증 계층: `password.ts`/`session.ts`(순수, 테스트됨) → `admins.ts`(Firestore) → `admin-auth.ts`(next/headers).
 
-- 기준표 로직(`▲`=답변≤N 득표, 난이도 문항은 정확 일치, 성별 하드 필터)을 바꿀 땐 `src/lib/scoring.test.ts`를 먼저 확인. 채점 규칙 변경은 반드시 테스트로 검증.
+- 기준표 로직(`▲`=답변≤N 득표, 난이도 문항은 정확 일치, 성별·과탐 2과목 하드 필터)을 바꿀 땐 `src/lib/scoring.test.ts`를 먼저 확인. 채점 규칙 변경은 반드시 테스트로 검증.
 - 시크릿 값(`ADMIN_TOKEN` 등)을 코드·로그·커밋·대화에 남기지 않는다. Secret Manager에만 둔다.
 - **`main`은 보호 브랜치라 직접 푸시할 수 없다.** 모든 변경은 브랜치 → PR. PR을 열면 CI(`check`=lint+test, `build`=next build)가 돌고, 초록이면 auto-merge가 머지하고, 머지되면 Cloud Build가 Cloud Run에 배포한다 — 즉 **PR을 여는 것이 곧 배포다**.
 - **머지는 squash 하나뿐이다**(레포가 merge commit·rebase를 막는다). `auto-merge.yml`의 `gh pr merge --squash`는 그 설정과 함께 움직여야 한다 — 레포가 허용하지 않는 방식을 적으면 워크플로만 조용히 실패하고 PR은 머지되지 않는다. 스택 브랜치를 쌓았다면 아래 PR은 `git rebase --onto main <위 PR의 마지막 커밋>`으로 옮긴다.

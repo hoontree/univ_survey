@@ -737,7 +737,8 @@
           "mode": "lte"
         }
       },
-      "hardFilter": true
+      "hardFilter": true,
+      "filterLabel": "성별 조건"
     },
     {
       "id": "q10",
@@ -809,7 +810,9 @@
           "threshold": 2,
           "mode": "lte"
         }
-      }
+      },
+      "hardFilter": true,
+      "filterLabel": "과탐 2과목 응시 필요"
     },
     {
       "id": "q11",

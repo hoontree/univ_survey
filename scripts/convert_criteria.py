@@ -8,7 +8,9 @@
   "N▲"  → 답변 번호 ≤ N 이면 해당 대학 +1표 (mode: lte)
   "N"   → 답변 번호 = N 일 때만 +1표      (mode: eq)
 문항 규칙:
-  성별 문항은 hardFilter — 미충족 대학은 최종 추천에서 제외(지원 불가 표시)
+  HARD_FILTER_QUESTIONS 에 있는 문항(성별·과탐 2과목 응시)은 hardFilter —
+  미충족 대학은 득표와 무관하게 최종 추천에서 제외(지원 불가 표시).
+  값은 결과 화면에 보여줄 제외 사유(filterLabel).
 """
 import json
 import re
@@ -27,7 +29,12 @@ TRACKS = [
     {"file": "비메디컬기준.xlsx", "id": "nonmedical", "name": "비메디컬"},
 ]
 
-HARD_FILTER_QUESTIONS = {"성별"}
+# 문항 텍스트 → 결과 화면의 제외 사유 라벨. 여기 있는 문항은 득표가 아니라 지원 자격이다.
+# 과탐 2과목: 강사 기준표에서 "1▲"(네만 통과)인 대학은 최저학력기준이 과탐 2과목을 요구한다.
+HARD_FILTER_QUESTIONS = {
+    "성별": "성별 조건",
+    "수능 과학탐구 2과목 응시자 입니까?": "과탐 2과목 응시 필요",
+}
 
 # 선택지 마커: 문자열 시작 또는 공백 뒤의 "N." (선택지 본문 속 숫자와 구분)
 OPTION_MARKER = re.compile(r"(?:(?<=^)|(?<=\s))([1-9])\.\s*")
@@ -85,6 +92,7 @@ def convert(track: dict) -> dict:
         }
         if q_text in HARD_FILTER_QUESTIONS:
             q["hardFilter"] = True
+            q["filterLabel"] = HARD_FILTER_QUESTIONS[q_text]
         # 규칙 임계값이 선택지 범위를 벗어나면 데이터 오류
         max_opt = max(o["value"] for o in q["options"])
         for univ, rule in rules.items():
