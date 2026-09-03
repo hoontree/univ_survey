@@ -130,6 +130,11 @@ export function MemberGate({ meta, notice, onPass }: MemberGateProps) {
         setError(data.error ?? "본인 확인에 실패했어요. 다시 시도해 주세요.");
         return;
       }
+      // 개발·검수용 우회 번호 — 서버가 OTP 없이 바로 토큰을 내줬다. 문자 단계를 건너뛴다.
+      if (data.bypass && data.token) {
+        await pass(data.token);
+        return;
+      }
       await requestCode(data.firebase);
       setChallenge({ challenge: data.challenge, config: data.firebase });
       setStep("code");
