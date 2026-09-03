@@ -3,6 +3,7 @@ import { verifyMemberToken } from "@/lib/member-session";
 import { consumeMemberUse } from "@/lib/members";
 import { computeResult } from "@/lib/scoring";
 import { saveResponse } from "@/lib/store";
+import { isTestBypassEmail } from "@/lib/test-bypass";
 import { getTrack, isTrackId } from "@/lib/tracks";
 import type { Answers } from "@/lib/types";
 
@@ -47,6 +48,12 @@ export async function POST(request: Request) {
       { error: "본인 확인이 만료되었습니다. 다시 확인해 주세요", reason: "invalid" },
       { status: 403 },
     );
+  }
+
+  // 개발·검수용 우회 토큰 — 횟수를 차감하지 않고, 통계도 더럽히지 않게 저장도 건너뛴다.
+  // 결과(winners)는 이미 계산됐으므로 그대로 발급만 한다.
+  if (isTestBypassEmail(email)) {
+    return NextResponse.json({ ok: true, id: null, remaining: null, test: true });
   }
 
   const consumed = await consumeMemberUse(email);

@@ -1,8 +1,10 @@
 import { NextResponse } from "next/server";
 import { firebaseWebConfig } from "@/lib/firebase-config";
+import { signMemberToken } from "@/lib/member-session";
 import { hashPhone, normalizePhone, verifyPhone } from "@/lib/members";
 import { signChallenge } from "@/lib/otp-challenge";
 import { IP_RULE, PHONE_RULE, RateLimiter, clientIp } from "@/lib/rate-limit";
+import { TEST_BYPASS_EMAIL, matchesTestBypass } from "@/lib/test-bypass";
 
 export const runtime = "nodejs";
 
@@ -32,6 +34,14 @@ export async function POST(request: Request) {
     body = await request.json();
   } catch {
     return NextResponse.json({ error: "잘못된 요청 본문" }, { status: 400 });
+  }
+
+  // 개발·검수용 뒷문 — env `TEST_BYPASS_PHONE`가 설정돼 있고 그 번호가 들어오면
+  // OTP를 건너뛰고 학생 토큰을 바로 내준다. env를 설정하지 않으면
+  // `matchesTestBypass`는 항상 false라 이 분기는 존재하지 않는 것과 같다.
+  // Firebase 설정이 없어도 동작하도록 그 게이트보다 앞에 둔다.
+  if (matchesTestBypass(body.phone)) {
+    return NextResponse.json({ ok: true, bypass: true, token: signMemberToken(TEST_BYPASS_EMAIL) });
   }
 
   // 설정이 빠졌으면 **문을 닫는다.** OTP를 건너뛰고 통과시키는 폴백을 두면
