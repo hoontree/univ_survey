@@ -47,7 +47,10 @@ steps:
       - "--platform=managed"
       - "--service-account=${_RUNTIME_SA}"
       - "--set-env-vars=GOOGLE_CLOUD_PROJECT=${PROJECT_ID},FIREBASE_API_KEY=${_FIREBASE_API_KEY},FIREBASE_AUTH_DOMAIN=${_FIREBASE_AUTH_DOMAIN},FIREBASE_WEB_APP_ID=${_FIREBASE_WEB_APP_ID}"
-      - "--set-secrets=ADMIN_TOKEN=universeol-admin-token:latest"
+      # TEST_BYPASS_PHONE: 검수용 우회 번호. 값이 곧 인증 우회 자격이라 파일에
+      # 박지 않고 Secret Manager에 둔다. 시크릿(universeol-test-bypass-phone)이
+      # 없으면 이 배포는 실패하므로, 반드시 시크릿을 먼저 만들 것.
+      - "--set-secrets=ADMIN_TOKEN=universeol-admin-token:latest,TEST_BYPASS_PHONE=universeol-test-bypass-phone:latest"
       - "--min-instances=0"
       - "--max-instances=10"
       - "--memory=512Mi"
